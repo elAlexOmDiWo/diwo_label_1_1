@@ -20,11 +20,13 @@ bool init_led(void) {
     return false;
   }
 
-  err = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+  err = gpio_pin_configure_dt( &led, GPIO_OUTPUT_ACTIVE );
   if (err < 0) {
     printk("Led pin init failed (err %d)\n", err);
     return false;
   }
 
+  gpio_pin_set_dt( &led, 0 ); 
+  
   return true;
 }

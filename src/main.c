@@ -10,6 +10,7 @@
 #include "led.h"
 
 #include "diwo_label.h"
+#include "bsp.h"
 
 #define DEFAULT_ADV_PERIOD_S              1                   // Период отсылки рекламы по умолчанию
 #define MAX_SHOCK_TIME                    255                 // Максимальное время удержания события удара ( сек )
@@ -62,12 +63,8 @@ adv_data_s adv_data = {
 
 struct bt_le_ext_adv *adv = NULL;
 
-//uint8_t short_name[] = "DiWo";
-
 static const struct bt_data ad[] = {
   BT_DATA_BYTES( BT_DATA_FLAGS, BT_LE_AD_NO_BREDR ),
-//  BT_DATA_BYTES( BT_DATA_UUID16_ALL, 0xaa, 0xfe ),
-//  BT_DATA( BT_DATA_NAME_SHORTENED, short_name, 4 ),
   BT_DATA( BT_DATA_MANUFACTURER_DATA, &adv_data, sizeof( adv_data )),
 };
 
@@ -79,34 +76,37 @@ struct k_timer adv_timer; //Таймер
 /** Callback по срабатыванию таймера
  */
 void adv_timer_exp(struct k_timer *timer_id) {
-//  k_sem_give(&timer_sem);
   uint8_t event = evTimer;
   k_msgq_put(&qevent, &event, K_NO_WAIT);
 }
 
 static void button_cb(const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins) {
-  //  gpio_pin_toggle_dt(&led);
   printk("Button event\r");
 }
 
-void lis12dw_trigger_handler(const struct device *dev, const struct sensor_trigger *trig) {
-  //  gpio_pin_toggle_dt(&led);
+void lis12dw_trigger_handler( const struct device *dev, const struct sensor_trigger *trig ) {
+  if (trig->type == SENSOR_TRIG_THRESHOLD) {
+    uint8_t event = evIrqHi;
+    k_msgq_put( &qevent, &event, K_NO_WAIT );     
+  }
+  else if (trig->type == SENSOR_TRIG_FREEFALL) {
+    uint8_t event = evIrqLo;
+    k_msgq_put( &qevent, &event, K_NO_WAIT );       
+  }
+ 
+}
+
+void lis12dw_trigger_freefall_handler( const struct device *dev, const struct sensor_trigger *trig ) {
   uint8_t event = evIrqHi;
-  k_msgq_put(&qevent, &event, K_NO_WAIT);  
+  k_msgq_put( &qevent, &event, K_NO_WAIT );  
 }
 
 void main(void) {
   int err;
   
   printk("Starting DiWO Label App\n");
-
-  const struct device *temp_dev;
-//  temp_dev = device_get_binding( "temp@4000c000" );
-//  temp_dev = device_get_binding( "temp" );
-  temp_dev = device_get_binding( "TEMP_0" );
-  if (!temp_dev) {
-    printk( "error: no temp device\n" );
-  }
+  
+  init_board();
   
   if (true != init_button( button_cb )) {
 	  printk("Error init button\r");
@@ -121,22 +121,47 @@ void main(void) {
 	  printk("Not found LIS2\n");
   }	
 
-  struct sensor_value sval = { .val1 = 10, .val2 = 0 };
+  struct sensor_value sval = { .val1 = 12, .val2 = 0 };
   sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
   
-  sval.val1 = 2;
+  sval.val1 = 160;
   sval.val2 = 0;
-  sensor_attr_set(acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval); 
+  err = sensor_attr_set(acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval); 
+  if (err) {
+    printk( "Error set ACC Scale\n" );
+  }
   
-  sval.val1 = 1;
+  sval.val1 = 20;
   sval.val2 = 0;
-  sensor_attr_set(acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval);   
+  err = sensor_attr_set(acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval);   
+  if (err) {
+    printk( "Error set ACC THRESH\n" );
+  }
   
-  struct sensor_trigger trig;  
+  struct sensor_trigger trig_thres;  
   
-  trig.type = SENSOR_TRIG_THRESHOLD;
-  trig.chan = SENSOR_CHAN_ACCEL_XYZ;
-  err = sensor_trigger_set(acc_lis2dw, &trig, lis12dw_trigger_handler);  
+  trig_thres.type = SENSOR_TRIG_THRESHOLD;
+  trig_thres.chan = SENSOR_CHAN_ACCEL_XYZ;
+  err = sensor_trigger_set( acc_lis2dw, &trig_thres, lis12dw_trigger_handler );  
+  if (err) {
+    printk( "Error set Trigger\n" );
+  }
+  
+  struct sensor_trigger trig_fall;  
+  
+//  trig_fall.type = 	SENSOR_TRIG_FREEFALL;
+//  trig_fall.chan = SENSOR_CHAN_ACCEL_XYZ;
+//  err = sensor_trigger_set( acc_lis2dw, &trig_fall, lis12dw_trigger_handler );  
+//  if (err) {
+//    printk( "Error set Trigger\n" );
+//  }  
+ 
+//  trig_fall.type = 	SENSOR_TRIG_DATA_READY;
+//  trig_fall.chan = SENSOR_CHAN_ACCEL_XYZ;
+//  err = sensor_trigger_set( acc_lis2dw, &trig_fall, lis12dw_trigger_handler );  
+//  if (err) {
+//    printk( "Error set Trigger\n" );
+//  }    
   
 	/* Initialize the Bluetooth Subsystem */
   err = bt_enable(NULL);
@@ -158,13 +183,7 @@ void main(void) {
             printk( "Advertising failed to stop (err %d)\n", err );
           }
           
-          adv_data.temp = ( int8_t )255;
-          if (NULL != temp_dev) {
-            struct sensor_value temp_value;
-            sensor_sample_fetch( temp_dev );
-            sensor_channel_get( temp_dev, SENSOR_CHAN_AMBIENT_TEMP, &temp_value );
-            adv_data.temp = (int8_t)temp_value.val1;
-          }
+          adv_data.temp = get_temp();
            
           struct sensor_value val[3] = { 0 };
           sensor_sample_fetch( acc_lis2dw );
@@ -195,6 +214,7 @@ void main(void) {
           
           adv_data.counter++;
           
+//          gpio_pin_toggle_dt( &led );
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 
           break;          
@@ -202,10 +222,16 @@ void main(void) {
         }
         case evIrqHi : {
           app_vars.last_shock = 1;
+          gpio_pin_set_dt( &led, 1 );
+          k_sleep( K_MSEC( 100 ));
+          gpio_pin_set_dt( &led, 0 );
           break;
         }
         case evIrqLo : {
           app_vars.last_fall = 1;
+          gpio_pin_set_dt( &led, 1 );
+          k_sleep( K_MSEC( 100 ) );
+          gpio_pin_set_dt( &led, 0 );          
           break;
         }
       }

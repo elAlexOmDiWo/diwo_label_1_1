@@ -8,6 +8,10 @@
 	model = "DiWo Label BLE 1_1";
 	compatible = "diwo,diwo-label-ble-1-1";
 
+	zephyr,user {
+		io-channels = <&adc 4>;
+	};
+
 	chosen {
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
@@ -123,24 +127,24 @@
 	cs-gpios = 	<&gpio0 17 GPIO_ACTIVE_LOW>,
 				<&gpio0 12 GPIO_ACTIVE_LOW>;
 
-	lis2de: lis2dh@0 {
-		compatible = "st,lis2dh";
-		reg = <0x0>;
-		label = "LIS2DH";
-		status = "okay";
-		disconnect-sdo-sa0-pull-up;
-		spi-max-frequency = <1000000>;
-		//supply-gpios = <&gpio0 6 0>;
-		irq-gpios = <&gpio0 19 0>,
-		 			<&gpio0 20 0>;
-	};
-	lis2dw12@1 {
+//	lis2de: lis2dh@1 {
+//		compatible = "st,lis2dh";
+//		reg = <0x0>;
+//		label = "LIS2DH";
+//		status = "okay";
+//		disconnect-sdo-sa0-pull-up;
+//		spi-max-frequency = <1000000>;
+//		//supply-gpios = <&gpio0 6 0>;
+//		irq-gpios = <&gpio0 19 0>,
+//		 			<&gpio0 20 0>;
+//	};
+	lis2dw12@0 {
 		compatible = "st,lis2dw12";
-		reg = <0x1>;
+		reg = <0x0>;
 		status = "okay";
 		spi-max-frequency = <1000000>;
-		irq-gpios = <&gpio0 13 0>,
-					<&gpio0 14 0>;
+		irq-gpios = <&gpio0 19 0>,
+					<&gpio0 20 0>;
 	};
 	// lis2dw12: lis2dh@0 {
 	// 	compatible = "st,lis2dh";

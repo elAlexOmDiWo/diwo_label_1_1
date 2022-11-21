@@ -31,18 +31,6 @@
 			gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "Push button switch 0";
 		};
-		// irq_pin1: irq_pin_1 {
-		// 	gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;	//(GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-		// 	label = "Push button switch 1";
-		// };
-		// irq_pin2: irq_pin_2 {
-		// 	gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;	//(GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-		// 	label = "Push button switch 2";
-		// };
-		// irq_pin3: irq_pin_3 {
-		// 	gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;	//(GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-		// 	label = "Push button switch 3";
-		// };
 	};
 
 	aliases {
@@ -51,9 +39,6 @@
 		mcuboot-led0 = &led0;
 		watchdog0 = &wdt0;
 		sw0 = &button0;
-		// irq1 = &irq_pin1;
-		// irq2 = &irq_pin2;
-		// irq3 = &irq_pin3;
 	};	
 };
 
@@ -61,20 +46,14 @@
 	uart0_default: uart0_default {
 		group1 {
 			psels = <NRF_PSEL( UART_TX, 0, 9 )>,
-					<NRF_PSEL( UART_RX, 0, 10 )>
-					// ,<NRF_PSEL(UART_RTS, 0, 6)>
-					// ,<NRF_PSEL(UART_CTS, 0, 7)>
-					;
+					<NRF_PSEL( UART_RX, 0, 10 )>;
 		};
 	};
 
 	uart0_sleep: uart0_sleep {
 		group1 {
 			psels = <NRF_PSEL( UART_TX, 0, 9 )>,
-					<NRF_PSEL( UART_RX, 0, 10 )>
-					// ,<NRF_PSEL(UART_RTS, 0, 6)>
-					// ,<NRF_PSEL(UART_CTS, 0, 7)>
-					;
+					<NRF_PSEL( UART_RX, 0, 10 )>;
 			low-power-enable;
 		};
 	};
@@ -127,17 +106,6 @@
 	cs-gpios = 	<&gpio0 17 GPIO_ACTIVE_LOW>,
 				<&gpio0 12 GPIO_ACTIVE_LOW>;
 
-//	lis2de: lis2dh@1 {
-//		compatible = "st,lis2dh";
-//		reg = <0x0>;
-//		label = "LIS2DH";
-//		status = "okay";
-//		disconnect-sdo-sa0-pull-up;
-//		spi-max-frequency = <1000000>;
-//		//supply-gpios = <&gpio0 6 0>;
-//		irq-gpios = <&gpio0 19 0>,
-//		 			<&gpio0 20 0>;
-//	};
 	lis2dw12@0 {
 		compatible = "st,lis2dw12";
 		reg = <0x0>;
@@ -146,17 +114,6 @@
 		irq-gpios = <&gpio0 19 0>,
 					<&gpio0 20 0>;
 	};
-	// lis2dw12: lis2dh@0 {
-	// 	compatible = "st,lis2dh";
-	// 	label = "LIS2DH";
-	// 	status = "okay";
-	// 	disconnect-sdo-sa0-pull-up;
-	// 	spi-max-frequency = <1000000>;
-	// 	reg = <0>;
-	// 	//supply-gpios = <&gpio0 6 0>;
-	// 	// irq-gpios = <&gpio0 20 0>,
-	// 	// 			<&gpio0 30 0>;
-	// };	
 };
 
 &flash0 {

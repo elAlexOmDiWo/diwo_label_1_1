@@ -53,7 +53,21 @@
         <BuildAllTargetsInSubdir>false</BuildAllTargetsInSubdir>
         <FoldSingleItemPathLevels>true</FoldSingleItemPathLevels>
       </ProjectItemSettings>
-      <TargetSpecificSettings />
+      <TargetSpecificSettings>
+        <CMakeTargetSpecificSettings>
+          <TargetID>app</TargetID>
+          <Debug />
+          <Deployment>
+            <Mode>Auto</Mode>
+            <DeployIfNotSpecificallyReferenced>false</DeployIfNotSpecificallyReferenced>
+            <DoNotDeployVersionedBinaries>false</DoNotDeployVersionedBinaries>
+          </Deployment>
+          <AlternateHeaderDirectories>
+            <string>B:\Projects\nRF52\v2.1.1\zephyr\drivers\sensor\stmemsc</string>
+          </AlternateHeaderDirectories>
+          <HeaderDiscoveryMode>Default</HeaderDiscoveryMode>
+        </CMakeTargetSpecificSettings>
+      </TargetSpecificSettings>
       <SetLDLibraryPathFromDependentArtifacts>true</SetLDLibraryPathFromDependentArtifacts>
       <ProjectGUID>e0b23510-e3d4-429c-b672-a017bbcd04aa</ProjectGUID>
       <VirtualFolders />

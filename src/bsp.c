@@ -37,17 +37,10 @@ static const struct battery_level_point levels[] = {
 static const struct device *temp_dev = DEVICE_DT_GET_ANY( nordic_nrf_temp );
 
 void init_board ( void ) {
-  int err = 0;
   if (temp_dev == NULL || !device_is_ready( temp_dev )) {
     printk( "no temperature device; using simulated data\n" );
     temp_dev = NULL;
   }
-  
-//  err = battery_measure_enable( true );
-//  if (err != 0) {
-//    printk( "Failed initialize battery measurement: %d\n", err );
-//    return;
-//  }
 }
 
 /** \fn get_temp Чтение температуры контроллера

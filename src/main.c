@@ -9,10 +9,19 @@
 #include "button.h"
 #include "led.h"
 
+#include "lis2dw12_reg.h"
+#include "B:\Projects\nRF52\v2.1.1\zephyr\drivers\sensor\lis2dw12\lis2dw12.h"
+
 #include "diwo_label.h"
 #include "bsp.h"
 
+#define __DEBUG__
+
 #define DEFAULT_ADV_PERIOD_S              1                   // Период отсылки рекламы по умолчанию
+#define ACC_FULL_SCALE                    160                 // мС^2
+#define ACC_SHOCK_THRESHOLD               40                 // мС^2
+#define ACC_FREFALL_DURATION              0                   // Длительность события free-fall ( 0 - 63 )
+#define ACC_FREEFALL_THRESHOLD            ff_thrs_8           // Порог события free-fall ( 0 - 7 )
 #define MAX_SHOCK_TIME                    255                 // Максимальное время удержания события удара ( сек )
 #define MAX_FALL_TIME                     255                 // Максимальное время удержания события падения ( сек )
 
@@ -47,6 +56,8 @@ const app_settings_s app_settings = {
   .adv_period = DEFAULT_ADV_PERIOD_S,
 };  
 
+lis2dw12_reg_t regs[64];
+
 app_var_s app_vars = { 0 };
 
 adv_data_s adv_data = { 
@@ -74,6 +85,14 @@ static const struct device *acc_lis2dw = NULL;
 
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 10, 1 );
 struct k_timer adv_timer; //Таймер
+
+int read_regs( const struct device *dev, uint8_t start, uint8_t* data, int count ) {
+  const struct lis2dw12_device_config *cfg = dev->config;
+  stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+  int err = lis2dw12_read_reg( ctx, start, data, count );
+  return err;
+}
 
 /** Callback по срабатыванию таймера
  */
@@ -139,14 +158,14 @@ void main( void ) {
   struct sensor_value sval = { .val1 = 12, .val2 = 0 };
   sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
   
-  sval.val1 = 160;
+  sval.val1 = ACC_FULL_SCALE;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
   if (err) {
     printk( "Error set ACC Scale\n" );
   }
   
-  sval.val1 = 20;
+  sval.val1 = ACC_SHOCK_THRESHOLD;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval );   
   if (err) {
@@ -161,23 +180,29 @@ void main( void ) {
   if (err) {
     printk( "Error set Trigger\n" );
   }
-  
-  sval.val1 = 0;
-  sval.val2 = 7;
+
+  sval.val1 = ACC_FREFALL_DURATION;       // Длительность
+  sval.val2 = ACC_FREEFALL_THRESHOLD;     // Порог
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FREE_FALL, &sval );   
   if (err) {
     printk( "Error set ACC Free-fall\n" );
-  }  
+  }
+  
+  lis2dw12_reg_t temp = { 0 };
+  err = read_regs( acc_lis2dw, 0x36, (uint8_t*)&temp, 1 );
+  if (err) {
+    printk( "Error read reg 36\n" );
+  }    
   
   struct sensor_trigger trig_fall;  
   
-  trig_fall.type = 	SENSOR_ATTR_FREE_FALL;
+  trig_fall.type = 	SENSOR_TRIG_FREEFALL;
   trig_fall.chan = SENSOR_CHAN_ACCEL_XYZ;
   err = sensor_trigger_set( acc_lis2dw, &trig_fall, lis12dw_trigger_freefall_handler );  
   if (err) {
     printk( "Error set Trigger\n" );
   }  
- 
+  
   /* Initialize the Bluetooth Subsystem */
   err = bt_enable( NULL );
   if (err) {
@@ -237,7 +262,7 @@ void main( void ) {
           
           adv_data.counter++;
           
-          //          gpio_pin_toggle_dt( &led );
+          //gpio_pin_toggle_dt( &led );
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 
           break;          
@@ -245,16 +270,20 @@ void main( void ) {
         }
       case evIrqHi : {
           app_vars.last_shock = 1;
+#ifdef __DEBUG__        
           gpio_pin_set_dt( &led, 1 );
           k_sleep( K_MSEC( 100 ) );
           gpio_pin_set_dt( &led, 0 );
+#endif        
           break;
         }
       case evIrqLo : {
           app_vars.last_fall = 1;
+#ifdef __DEBUG__         
           gpio_pin_set_dt( &led, 1 );
-          k_sleep( K_MSEC( 100 ) );
-          gpio_pin_set_dt( &led, 0 );          
+          k_sleep( K_MSEC( 200 ) );
+          gpio_pin_set_dt( &led, 0 );
+#endif        
           break;
         }
       }

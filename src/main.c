@@ -17,19 +17,19 @@
 
 #define __DEBUG__
 
-#define DEFAULT_ADV_PERIOD_S              1                   // Период отсылки рекламы по умолчанию
+#define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
 #define ACC_FULL_SCALE                    160                 // мС^2
 #define ACC_SHOCK_THRESHOLD               40                 // мС^2
-#define ACC_FREFALL_DURATION              0                   // Длительность события free-fall ( 0 - 63 )
-#define ACC_FREEFALL_THRESHOLD            ff_thrs_8           // Порог события free-fall ( 0 - 7 )
+#define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
+#define ACC_FREEFALL_THRESHOLD            ff_thrs_7           // Порог события free-fall ( 0 - 7 )
 #define MAX_SHOCK_TIME                    255                 // Максимальное время удержания события удара ( сек )
 #define MAX_FALL_TIME                     255                 // Максимальное время удержания события падения ( сек )
 
 #define BATT_READ_DELAY                   10                  // Делитель опроса батареии
 
 #define BT_LE_ADV_NCONN_IDENTITY_1 BT_LE_ADV_PARAM(BT_LE_ADV_OPT_USE_IDENTITY, \
-						 BT_GAP_ADV_SLOW_INT_MIN, \
-						 BT_GAP_ADV_SLOW_INT_MIN, \
+						 BT_GAP_ADV_SLOW_INT_MIN*5, \
+						 BT_GAP_ADV_SLOW_INT_MIN*5, \
 						 NULL) 
 
 /** Структура настроек приложения */

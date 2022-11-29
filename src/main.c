@@ -30,7 +30,7 @@
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-#define __DEBUG__                         1
+//#define __DEBUG__                         1
 #define __ENABLE_SELF_TEST_MESS__         1
 
 #define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию

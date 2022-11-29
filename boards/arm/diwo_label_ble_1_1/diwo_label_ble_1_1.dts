@@ -88,6 +88,7 @@
 	status = "okay";	
 };
 
+/*
 &uart0 {
 	compatible = "nordic,nrf-uarte";
 	status = "okay";
@@ -96,6 +97,7 @@
 	pinctrl-1 = <&uart0_sleep>;
 	pinctrl-names = "default", "sleep";
 };
+*/
 
 &spi0 {
 	compatible = "nordic,nrf-spi";
@@ -106,13 +108,18 @@
 	cs-gpios = 	<&gpio0 17 GPIO_ACTIVE_LOW>,
 				<&gpio0 12 GPIO_ACTIVE_LOW>;
 
-	lis2dw12@0 {
-		compatible = "st,lis2dw12";
-		reg = <0x0>;
-		status = "okay";
-		spi-max-frequency = <1000000>;
-		irq-gpios = <&gpio0 19 0>,
-					<&gpio0 20 0>;
+	lis2dw12@1 {
+		compatible	= "st,lis2dw12";
+		reg			= <0x1>;
+		status		= "okay";
+//		range		= 16;
+//		odr			= 12;
+//		bw-filt		= 2;
+//		low-noise	= false;
+
+		spi-max-frequency = <8000000>;
+		irq-gpios = <&gpio0 13 0>,
+					<&gpio0 14 0>;
 	};
 };
 

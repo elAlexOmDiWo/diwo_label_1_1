@@ -50,7 +50,7 @@ bool init_button(gpio_callback_handler_t handler) {
   
 	gpio_add_callback(button.port, &button_cb_data);
   
-	printk("Set up button at %s pin %d\n", button.port->name, button.pin);
+//	printk("Set up button at %s pin %d\n", button.port->name, button.pin);
 
 	return true;
 }

@@ -6,6 +6,9 @@
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/watchdog.h>
+#include <zephyr/logging/log.h>
+
 #include "button.h"
 #include "led.h"
 
@@ -14,8 +17,21 @@
 
 #include "diwo_label.h"
 #include "bsp.h"
+#include "wdt.h"
 
-#define __DEBUG__
+#define RTT_CTRL_CLEAR                "[2J"
+
+#define RTT_CTRL_TEXT_BLACK           "[2;30m"
+#define RTT_CTRL_TEXT_RED             "[2;31m"
+#define RTT_CTRL_TEXT_GREEN           "[2;32m"
+#define RTT_CTRL_TEXT_YELLOW          "[2;33m"
+#define RTT_CTRL_TEXT_BLUE            "[2;34m"
+#define RTT_CTRL_TEXT_MAGENTA         "[2;35m"
+#define RTT_CTRL_TEXT_CYAN            "[2;36m"
+#define RTT_CTRL_TEXT_WHITE           "[2;37m"
+
+#define __DEBUG__                         1
+#define __ENABLE_SELF_TEST_MESS__         1
 
 #define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
 #define ACC_FULL_SCALE                    160                 // мС^2
@@ -32,6 +48,13 @@
 						 BT_GAP_ADV_SLOW_INT_MIN*5, \
 						 NULL) 
 
+#if ( __ENABLE_SELF_TEST_MESS__ == 1 )
+#define SELF_TEST_MESS( MODULE, STATUS )        LOG_PRINTK( "SELFTEST: %-16s - %s\r", MODULE, STATUS );
+#else
+#define SELF_TEST_MESS( MODULE, STATUS )
+#endif
+
+    
 /** Структура настроек приложения */
 typedef struct {
   uint16_t adv_period; // Период рассылки сообщений в секундах
@@ -126,50 +149,78 @@ void print_device_info( void ) {
   int count = 1;
   bt_id_get( &app_vars.addr, &count );
   
-  printk( "Mac addr - 0x%02x:%02x:%02x:%02x:%02x:%02x",
+  LOG_PRINTK( "\n" );
+
+  LOG_PRINTK( RTT_CTRL_TEXT_CYAN ); 
+  
+  LOG_PRINTK( "%-26s - %02x:%02x:%02x:%02x:%02x:%02x\r",
+    "MAC ADDR",
     app_vars.addr.a.val[0], 
     app_vars.addr.a.val[1], 
     app_vars.addr.a.val[2], 
     app_vars.addr.a.val[3], 
     app_vars.addr.a.val[4], 
     app_vars.addr.a.val[5] );
+
+  LOG_PRINTK( RTT_CTRL_TEXT_YELLOW ); 
+  LOG_PRINTK( "%-26s - %02x%02x%02x%02x%02x%02x\r",
+    "MAC ADDR REVERSE",    
+    app_vars.addr.a.val[5], 
+    app_vars.addr.a.val[4], 
+    app_vars.addr.a.val[3], 
+    app_vars.addr.a.val[2], 
+    app_vars.addr.a.val[1], 
+    app_vars.addr.a.val[0] ); 
+  
+  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );  
+  LOG_PRINTK( "\n" );
 }
 
 void main( void ) {
   int err;
   
-  printk( "Starting DiWO Label App\n" );
+  LOG_PRINTK( RTT_CTRL_CLEAR );
+  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
+  
+  SELF_TEST_MESS( "INIT START", "OK" );
   
   init_board();
   
-  if (true != init_button( button_cb )) {
-    printk( "Error init button\r" );
-  }	
+//  if (true != init_button( button_cb )) {
+//    LOG_PRINTK( "Error init button\r" );
+//  }	
 
   if (true != init_led()) {
-    printk( "Error init led\r" );
+    SELF_TEST_MESS( "LED", "ERORR" );
   }
   
   acc_lis2dw = DEVICE_DT_GET_ANY( st_lis2dw12 );
   if (acc_lis2dw == NULL) {
-    printk( "Not found LIS2\n" );
-  }	
+    SELF_TEST_MESS( "ACC", "ERROR" );
+    while (1) {
+      k_sleep( K_SECONDS( 1 ));
+    }
+  }
+  SELF_TEST_MESS( "ACC", "OK" );
   
-  struct sensor_value sval = { .val1 = 12, .val2 = 0 };
+  struct sensor_value sval = { 0 };
+  
+  sval.val1 = 12;
+  sval.val2 = 0;
   sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
   
   sval.val1 = ACC_FULL_SCALE;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
   if (err) {
-    printk( "Error set ACC Scale\n" );
+    SELF_TEST_MESS( "ACC SCALE", "ERROR" );
   }
   
   sval.val1 = ACC_SHOCK_THRESHOLD;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval );   
   if (err) {
-    printk( "Error set ACC THRESH\n" );
+    SELF_TEST_MESS( "ACC TRSH", "ERROR" );
   }
   
   struct sensor_trigger trig_thres;  
@@ -178,42 +229,46 @@ void main( void ) {
   trig_thres.chan = SENSOR_CHAN_ACCEL_XYZ;
   err = sensor_trigger_set( acc_lis2dw, &trig_thres, lis12dw_trigger_handler );  
   if (err) {
-    printk( "Error set Trigger\n" );
+    SELF_TEST_MESS( "ACC TRSH TRG", "ERROR" );
   }
 
   sval.val1 = ACC_FREFALL_DURATION;       // Длительность
   sval.val2 = ACC_FREEFALL_THRESHOLD;     // Порог
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FREE_FALL, &sval );   
   if (err) {
-    printk( "Error set ACC Free-fall\n" );
+    SELF_TEST_MESS( "ACC FF", "ERROR" );
   }
-  
-  lis2dw12_reg_t temp = { 0 };
-  err = read_regs( acc_lis2dw, 0x36, (uint8_t*)&temp, 1 );
-  if (err) {
-    printk( "Error read reg 36\n" );
-  }    
-  
+ 
   struct sensor_trigger trig_fall;  
   
   trig_fall.type = 	SENSOR_TRIG_FREEFALL;
   trig_fall.chan = SENSOR_CHAN_ACCEL_XYZ;
   err = sensor_trigger_set( acc_lis2dw, &trig_fall, lis12dw_trigger_freefall_handler );  
   if (err) {
-    printk( "Error set Trigger\n" );
+    SELF_TEST_MESS( "ACC FF TRG", "ERROR" );
   }  
   
   /* Initialize the Bluetooth Subsystem */
   err = bt_enable( NULL );
   if (err) {
-    printk( "Bluetooth init failed (err %d)\n", err );
-    return;
+    SELF_TEST_MESS( "BLE", "ERROR" );
+    while (1) {
+      k_sleep( K_SECONDS( 1 ));      
+    }
   }
-
-  print_device_info();
+  SELF_TEST_MESS( "BLE", "OK" );  
+  
+  if (true != init_wdt( 10000 )) {
+    SELF_TEST_MESS( "WDT", "ERROR" );
+  }
+  SELF_TEST_MESS( "WDT", "OK" );
   
   k_timer_init( &adv_timer, adv_timer_exp, NULL );
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
+ 
+  SELF_TEST_MESS( "APP START", "OK" );   
+ 
+  print_device_info();  
   
   while (1) {
     uint8_t event = 0;
@@ -223,8 +278,12 @@ void main( void ) {
           static int batt_counter = 0;
           err = bt_le_adv_stop();
           if (err) {
+#ifdef __DEBUG__            
             printk( "Advertising failed to stop (err %d)\n", err );
+#endif            
           }
+          
+          reset_wdt();
           
           adv_data.temp = get_temp();
           
@@ -264,7 +323,12 @@ void main( void ) {
           
           //gpio_pin_toggle_dt( &led );
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
-
+#ifdef __DEBUG__            
+          printk( "Send advertisment.\r" );
+          printk( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+          printk( "shock - %d  fall - %d\r", adv_data.shock, adv_data.fall );        
+          printk( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );      
+#endif
           break;          
           
         }
@@ -274,6 +338,7 @@ void main( void ) {
           gpio_pin_set_dt( &led, 1 );
           k_sleep( K_MSEC( 100 ) );
           gpio_pin_set_dt( &led, 0 );
+          printk( "Threshold IRQ.\n" );
 #endif        
           break;
         }
@@ -283,6 +348,7 @@ void main( void ) {
           gpio_pin_set_dt( &led, 1 );
           k_sleep( K_MSEC( 200 ) );
           gpio_pin_set_dt( &led, 0 );
+          printk( "FreeFall IRQ.\n" );        
 #endif        
           break;
         }

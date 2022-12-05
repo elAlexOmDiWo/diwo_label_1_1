@@ -19,27 +19,29 @@
 #include "bsp.h"
 #include "wdt.h"
 
-#define RTT_CTRL_CLEAR                "[2J"
-
-#define RTT_CTRL_TEXT_BLACK           "[2;30m"
-#define RTT_CTRL_TEXT_RED             "[2;31m"
-#define RTT_CTRL_TEXT_GREEN           "[2;32m"
-#define RTT_CTRL_TEXT_YELLOW          "[2;33m"
-#define RTT_CTRL_TEXT_BLUE            "[2;34m"
-#define RTT_CTRL_TEXT_MAGENTA         "[2;35m"
-#define RTT_CTRL_TEXT_CYAN            "[2;36m"
-#define RTT_CTRL_TEXT_WHITE           "[2;37m"
+//#define RTT_CTRL_CLEAR                "[2J"
+//
+//#define RTT_CTRL_TEXT_BLACK           "[2;30m"
+//#define RTT_CTRL_TEXT_RED             "[2;31m"
+//#define RTT_CTRL_TEXT_GREEN           "[2;32m"
+//#define RTT_CTRL_TEXT_YELLOW          "[2;33m"
+//#define RTT_CTRL_TEXT_BLUE            "[2;34m"
+//#define RTT_CTRL_TEXT_MAGENTA         "[2;35m"
+//#define RTT_CTRL_TEXT_CYAN            "[2;36m"
+//#define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
 //#define __DEBUG__                         1
 #define __ENABLE_SELF_TEST_MESS__         1
+#define __ENABLE_WDT__                    1
 
 #define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
 #define ACC_FULL_SCALE                    160                 // мС^2
-#define ACC_SHOCK_THRESHOLD               40                 // мС^2
+#define ACC_SHOCK_THRESHOLD               60                  // мС^2
 #define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
 #define ACC_FREEFALL_THRESHOLD            ff_thrs_7           // Порог события free-fall ( 0 - 7 )
 #define MAX_SHOCK_TIME                    255                 // Максимальное время удержания события удара ( сек )
 #define MAX_FALL_TIME                     255                 // Максимальное время удержания события падения ( сек )
+#define ODR_VALUE                         25
 
 #define BATT_READ_DELAY                   10                  // Делитель опроса батареии
 
@@ -90,7 +92,7 @@ adv_data_s adv_data = {
   .z = 0,
   .bat = 0,
   .temp = 0,
-  .hud = 0,
+  .shock_value = 0,
   .shock = 0,
   .fall = 0,
   .counter = 0,
@@ -128,6 +130,8 @@ static void button_cb( const struct device *port, struct gpio_callback *cb, gpio
   printk( "Button event\r" );
 }
 
+/** Прерывание по превышению уровня 
+*/
 void lis12dw_trigger_handler( const struct device *dev, const struct sensor_trigger *trig ) {
   if (trig->type == SENSOR_TRIG_THRESHOLD) {
     uint8_t event = evIrqHi;
@@ -148,10 +152,10 @@ void lis12dw_trigger_freefall_handler( const struct device *dev, const struct se
 void print_device_info( void ) {
   int count = 1;
   bt_id_get( &app_vars.addr, &count );
-  
+  char str[32] = { 0 };
   LOG_PRINTK( "\n" );
 
-  LOG_PRINTK( RTT_CTRL_TEXT_CYAN ); 
+//  LOG_PRINTK( RTT_CTRL_TEXT_CYAN ); 
   
   LOG_PRINTK( "%-26s - %02x:%02x:%02x:%02x:%02x:%02x\r",
     "MAC ADDR",
@@ -162,7 +166,15 @@ void print_device_info( void ) {
     app_vars.addr.a.val[4], 
     app_vars.addr.a.val[5] );
 
-  LOG_PRINTK( RTT_CTRL_TEXT_YELLOW ); 
+//  LOG_PRINTK( RTT_CTRL_TEXT_YELLOW ); 
+  sprintf( str, "%02x%02x%02x%02x%02x%02x",
+    app_vars.addr.a.val[5], 
+    app_vars.addr.a.val[4], 
+    app_vars.addr.a.val[3], 
+    app_vars.addr.a.val[2], 
+    app_vars.addr.a.val[1], 
+    app_vars.addr.a.val[0] ); 
+  
   LOG_PRINTK( "%-26s - %02x%02x%02x%02x%02x%02x\r",
     "MAC ADDR REVERSE",    
     app_vars.addr.a.val[5], 
@@ -172,15 +184,15 @@ void print_device_info( void ) {
     app_vars.addr.a.val[1], 
     app_vars.addr.a.val[0] ); 
   
-  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );  
+//  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );  
   LOG_PRINTK( "\n" );
 }
 
 void main( void ) {
   int err;
   
-  LOG_PRINTK( RTT_CTRL_CLEAR );
-  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
+//  LOG_PRINTK( RTT_CTRL_CLEAR );
+//  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
   
   SELF_TEST_MESS( "INIT START", "OK" );
   
@@ -205,10 +217,11 @@ void main( void ) {
   
   struct sensor_value sval = { 0 };
   
-  sval.val1 = 12;
+  sval.val1 = ODR_VALUE;
   sval.val2 = 0;
   sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
   
+/* Установка шкалы */  
   sval.val1 = ACC_FULL_SCALE;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
@@ -216,15 +229,16 @@ void main( void ) {
     SELF_TEST_MESS( "ACC SCALE", "ERROR" );
   }
   
+/* Установка уровня срабатывания */  
   sval.val1 = ACC_SHOCK_THRESHOLD;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval );   
   if (err) {
     SELF_TEST_MESS( "ACC TRSH", "ERROR" );
   }
-  
+
+/* Разрешение прерывания */   
   struct sensor_trigger trig_thres;  
-  
   trig_thres.type = SENSOR_TRIG_THRESHOLD;
   trig_thres.chan = SENSOR_CHAN_ACCEL_XYZ;
   err = sensor_trigger_set( acc_lis2dw, &trig_thres, lis12dw_trigger_handler );  
@@ -257,11 +271,13 @@ void main( void ) {
     }
   }
   SELF_TEST_MESS( "BLE", "OK" );  
-  
+
+#if ( __ENABLE_WDT__ == 1 )    
   if (true != init_wdt( 10000 )) {
     SELF_TEST_MESS( "WDT", "ERROR" );
   }
   SELF_TEST_MESS( "WDT", "OK" );
+#endif
   
   k_timer_init( &adv_timer, adv_timer_exp, NULL );
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
@@ -283,7 +299,9 @@ void main( void ) {
 #endif            
           }
           
+#if ( __ENABLE_WDT__ == 1 )          
           reset_wdt();
+#endif
           
           adv_data.temp = get_temp();
           
@@ -307,6 +325,7 @@ void main( void ) {
             app_vars.last_shock += app_settings.adv_period;
             if (app_vars.last_shock > MAX_SHOCK_TIME) {
               app_vars.last_shock = 0;
+              adv_data.shock_value = 0;
             }
             adv_data.shock = app_vars.last_shock;
           }
@@ -333,7 +352,30 @@ void main( void ) {
           
         }
       case evIrqHi : {
-          app_vars.last_shock = 1;
+// Обработчик события по превышению
+/* shock_value (uint8) - величина удара, вычисленная по формуле (x * x + y * y + z * z) / (255 * 3), 
+ * вычисляется при срабатывании прерывания. При  ненулевом значении таймера shock (предыдущий удар был менее 255 секунд назад) 
+ * shock_value = max( (x * x + y * y + z * z) / (255 * 3), previous_shock_value)). 
+ * При обнулении таймера shock значение shock_value также обнуляется.        
+*/
+        app_vars.last_shock = 1;
+        
+        struct sensor_value val[3] = { 0 };
+        sensor_sample_fetch( acc_lis2dw );
+        sensor_channel_get( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, val );
+          
+        float temp = sensor_value_to_double( &val[0] );
+        adv_data.x = temp * 64;
+        temp = sensor_value_to_double( &val[1] );
+        adv_data.y = temp * 64;
+        temp = sensor_value_to_double( &val[2] );
+        adv_data.z = temp * 64; 
+
+        int value = ((adv_data.x * adv_data.x  + adv_data.y * adv_data.y + adv_data.z * adv_data.z) / (255 * 3));
+        if (adv_data.shock_value < value) {
+          adv_data.shock_value = value;
+        }
+        
 #ifdef __DEBUG__        
           gpio_pin_set_dt( &led, 1 );
           k_sleep( K_MSEC( 100 ) );

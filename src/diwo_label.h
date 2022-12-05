@@ -23,7 +23,7 @@ typedef struct {
   int8_t z;
   uint8_t bat;
   int8_t temp;
-  uint8_t hud;
+  uint8_t shock_value;
   uint8_t shock;
   uint8_t fall;
   uint8_t counter;

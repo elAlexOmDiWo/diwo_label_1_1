@@ -19,31 +19,43 @@
 #include "bsp.h"
 #include "wdt.h"
 
-//#define RTT_CTRL_CLEAR                "[2J"
-//
-//#define RTT_CTRL_TEXT_BLACK           "[2;30m"
-//#define RTT_CTRL_TEXT_RED             "[2;31m"
-//#define RTT_CTRL_TEXT_GREEN           "[2;32m"
-//#define RTT_CTRL_TEXT_YELLOW          "[2;33m"
-//#define RTT_CTRL_TEXT_BLUE            "[2;34m"
-//#define RTT_CTRL_TEXT_MAGENTA         "[2;35m"
-//#define RTT_CTRL_TEXT_CYAN            "[2;36m"
-//#define RTT_CTRL_TEXT_WHITE           "[2;37m"
+#define RTT_CTRL_CLEAR                "[2J"
 
-//#define __DEBUG__                         1
+#define RTT_CTRL_TEXT_BLACK           "[2;30m"
+#define RTT_CTRL_TEXT_RED             "[2;31m"
+#define RTT_CTRL_TEXT_GREEN           "[2;32m"
+#define RTT_CTRL_TEXT_YELLOW          "[2;33m"
+#define RTT_CTRL_TEXT_BLUE            "[2;34m"
+#define RTT_CTRL_TEXT_MAGENTA         "[2;35m"
+#define RTT_CTRL_TEXT_CYAN            "[2;36m"
+#define RTT_CTRL_TEXT_WHITE           "[2;37m"
+
+#define __DEBUG__                         1
 #define __ENABLE_SELF_TEST_MESS__         1
+//#define __ENABLE_WDT__                    1
+
+#define DEFAULT_ADV_PERIOD_S              3                   // ÐŸÐµÑ€Ð¸Ð¾Ð´ Ð¾Ñ‚ÑÑ‹Ð»ÐºÐ¸ Ñ€ÐµÐºÐ»Ð°Ð¼Ñ‹ Ð¿Ð¾ ÑƒÐ¼Ð¾Ð»Ñ‡Ð°Ð½Ð¸ÑŽ
+#define ACC_FULL_SCALE                    160                 // Ð¼Ð¡^2
+
+#ifndef __DEBUG__
+#define ACC_SHOCK_THRESHOLD               60                  // Ð¼Ð¡^2
 #define __ENABLE_WDT__                    1
-
-#define DEFAULT_ADV_PERIOD_S              3                   // Ïåðèîä îòñûëêè ðåêëàìû ïî óìîë÷àíèþ
-#define ACC_FULL_SCALE                    160                 // ìÑ^2
-#define ACC_SHOCK_THRESHOLD               60                  // ìÑ^2
-#define ACC_FREFALL_DURATION              2                   // Äëèòåëüíîñòü ñîáûòèÿ free-fall ( 0 - 63 )
-#define ACC_FREEFALL_THRESHOLD            ff_thrs_7           // Ïîðîã ñîáûòèÿ free-fall ( 0 - 7 )
-#define MAX_SHOCK_TIME                    255                 // Ìàêñèìàëüíîå âðåìÿ óäåðæàíèÿ ñîáûòèÿ óäàðà ( ñåê )
-#define MAX_FALL_TIME                     255                 // Ìàêñèìàëüíîå âðåìÿ óäåðæàíèÿ ñîáûòèÿ ïàäåíèÿ ( ñåê )
 #define ODR_VALUE                         25
+#else
+#warning Debug. Change before release
+#define ACC_SHOCK_THRESHOLD               40                  // Ð¼Ð¡^2
+#define __ENABLE_WDT__                    0
+#define __SEGGER_FORMAT                   1
+#define ODR_VALUE                         100
+#endif
 
-#define BATT_READ_DELAY                   10                  // Äåëèòåëü îïðîñà áàòàðåèè
+#define ACC_FREFALL_DURATION              2                   // Ð”Ð»Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾ÑÑ‚ÑŒ ÑÐ¾Ð±Ñ‹Ñ‚Ð¸Ñ free-fall ( 0 - 63 )
+#define ACC_FREEFALL_THRESHOLD            ff_thrs_7           // ÐŸÐ¾Ñ€Ð¾Ð³ ÑÐ¾Ð±Ñ‹Ñ‚Ð¸Ñ free-fall ( 0 - 7 )
+#define MAX_SHOCK_TIME                    255                 // ÐœÐ°ÐºÑÐ¸Ð¼Ð°Ð»ÑŒÐ½Ð¾Ðµ Ð²Ñ€ÐµÐ¼Ñ ÑƒÐ´ÐµÑ€Ð¶Ð°Ð½Ð¸Ñ ÑÐ¾Ð±Ñ‹Ñ‚Ð¸Ñ ÑƒÐ´Ð°Ñ€Ð° ( ÑÐµÐº )
+#define MAX_FALL_TIME                     255                 // ÐœÐ°ÐºÑÐ¸Ð¼Ð°Ð»ÑŒÐ½Ð¾Ðµ Ð²Ñ€ÐµÐ¼Ñ ÑƒÐ´ÐµÑ€Ð¶Ð°Ð½Ð¸Ñ ÑÐ¾Ð±Ñ‹Ñ‚Ð¸Ñ Ð¿Ð°Ð´ÐµÐ½Ð¸Ñ ( ÑÐµÐº )
+
+
+#define BATT_READ_DELAY                   10                  // Ð”ÐµÐ»Ð¸Ñ‚ÐµÐ»ÑŒ Ð¾Ð¿Ñ€Ð¾ÑÐ° Ð±Ð°Ñ‚Ð°Ñ€ÐµÐ¸Ð¸
 
 #define BT_LE_ADV_NCONN_IDENTITY_1 BT_LE_ADV_PARAM(BT_LE_ADV_OPT_USE_IDENTITY, \
 						 BT_GAP_ADV_SLOW_INT_MIN*5, \
@@ -57,9 +69,9 @@
 #endif
 
     
-/** Ñòðóêòóðà íàñòðîåê ïðèëîæåíèÿ */
+/** Ð¡Ñ‚Ñ€ÑƒÐºÑ‚ÑƒÑ€Ð° Ð½Ð°ÑÑ‚Ñ€Ð¾ÐµÐº Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ */
 typedef struct {
-  uint16_t adv_period; // Ïåðèîä ðàññûëêè ñîîáùåíèé â ñåêóíäàõ
+  uint16_t adv_period; // ÐŸÐµÑ€Ð¸Ð¾Ð´ Ñ€Ð°ÑÑÑ‹Ð»ÐºÐ¸ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¹ Ð² ÑÐµÐºÑƒÐ½Ð´Ð°Ñ…
 }app_settings_s;
 
 typedef struct {
@@ -68,7 +80,7 @@ typedef struct {
   bt_addr_le_t addr;
 } app_var_s;
 
-/** Ñîáûòèÿ ïðèëîæåíèÿ */
+/** Ð¡Ð¾Ð±Ñ‹Ñ‚Ð¸Ñ Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ */
 typedef enum {
   evNone  = 0,
   evTimer,
@@ -76,7 +88,7 @@ typedef enum {
   evIrqLo,
 } events_e;
 
-// Íàñòðîéêè ïðèëîæåíèÿ
+// ÐÐ°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸ Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ
 const app_settings_s app_settings = { 
   .adv_period = DEFAULT_ADV_PERIOD_S,
 };  
@@ -97,7 +109,7 @@ adv_data_s adv_data = {
   .fall = 0,
   .counter = 0,
   .reserv = { 0 },
-}; // Ðåêëàìíûé ïàêåò
+}; // Ð ÐµÐºÐ»Ð°Ð¼Ð½Ñ‹Ð¹ Ð¿Ð°ÐºÐµÑ‚
 
 struct bt_le_ext_adv *adv = NULL;
 
@@ -108,8 +120,8 @@ static const struct bt_data ad[] = {
 
 static const struct device *acc_lis2dw = NULL;
 
-K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 10, 1 );
-struct k_timer adv_timer; //Òàéìåð
+K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
+struct k_timer adv_timer; //Ð¢Ð°Ð¹Ð¼ÐµÑ€
 
 int read_regs( const struct device *dev, uint8_t start, uint8_t* data, int count ) {
   const struct lis2dw12_device_config *cfg = dev->config;
@@ -119,18 +131,20 @@ int read_regs( const struct device *dev, uint8_t start, uint8_t* data, int count
   return err;
 }
 
-/** Callback ïî ñðàáàòûâàíèþ òàéìåðà
+/** Callback Ð¿Ð¾ ÑÑ€Ð°Ð±Ð°Ñ‚Ñ‹Ð²Ð°Ð½Ð¸ÑŽ Ñ‚Ð°Ð¹Ð¼ÐµÑ€Ð°
  */
 void adv_timer_exp( struct k_timer *timer_id ) {
   uint8_t event = evTimer;
   k_msgq_put( &qevent, &event, K_NO_WAIT );
 }
 
+#if 0
 static void button_cb( const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins ) {
   printk( "Button event\r" );
 }
+#endif
 
-/** Ïðåðûâàíèå ïî ïðåâûøåíèþ óðîâíÿ 
+/** ÐŸÑ€ÐµÑ€Ñ‹Ð²Ð°Ð½Ð¸Ðµ Ð¿Ð¾ Ð¿Ñ€ÐµÐ²Ñ‹ÑˆÐµÐ½Ð¸ÑŽ ÑƒÑ€Ð¾Ð²Ð½Ñ 
 */
 void lis12dw_trigger_handler( const struct device *dev, const struct sensor_trigger *trig ) {
   if (trig->type == SENSOR_TRIG_THRESHOLD) {
@@ -152,10 +166,12 @@ void lis12dw_trigger_freefall_handler( const struct device *dev, const struct se
 void print_device_info( void ) {
   int count = 1;
   bt_id_get( &app_vars.addr, &count );
-  char str[32] = { 0 };
+
   LOG_PRINTK( "\n" );
 
-//  LOG_PRINTK( RTT_CTRL_TEXT_CYAN ); 
+#if ( __SEGGER_FORMAT == 1 )
+  LOG_PRINTK( RTT_CTRL_TEXT_CYAN ); 
+#endif  
   
   LOG_PRINTK( "%-26s - %02x:%02x:%02x:%02x:%02x:%02x\r",
     "MAC ADDR",
@@ -165,15 +181,6 @@ void print_device_info( void ) {
     app_vars.addr.a.val[3], 
     app_vars.addr.a.val[4], 
     app_vars.addr.a.val[5] );
-
-//  LOG_PRINTK( RTT_CTRL_TEXT_YELLOW ); 
-  sprintf( str, "%02x%02x%02x%02x%02x%02x",
-    app_vars.addr.a.val[5], 
-    app_vars.addr.a.val[4], 
-    app_vars.addr.a.val[3], 
-    app_vars.addr.a.val[2], 
-    app_vars.addr.a.val[1], 
-    app_vars.addr.a.val[0] ); 
   
   LOG_PRINTK( "%-26s - %02x%02x%02x%02x%02x%02x\r",
     "MAC ADDR REVERSE",    
@@ -184,15 +191,20 @@ void print_device_info( void ) {
     app_vars.addr.a.val[1], 
     app_vars.addr.a.val[0] ); 
   
-//  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );  
+#if ( __SEGGER_FORMAT == 1 )
+  LOG_PRINTK( RTT_CTRL_TEXT_WHITE ); 
+#endif
+
   LOG_PRINTK( "\n" );
 }
 
 void main( void ) {
   int err;
-  
-//  LOG_PRINTK( RTT_CTRL_CLEAR );
-//  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
+
+#if ( __SEGGER_FORMAT == 1 )  
+  LOG_PRINTK( RTT_CTRL_CLEAR );
+  LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
+#endif
   
   SELF_TEST_MESS( "INIT START", "OK" );
   
@@ -221,7 +233,7 @@ void main( void ) {
   sval.val2 = 0;
   sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
   
-/* Óñòàíîâêà øêàëû */  
+/* Ð£ÑÑ‚Ð°Ð½Ð¾Ð²ÐºÐ° ÑˆÐºÐ°Ð»Ñ‹ */  
   sval.val1 = ACC_FULL_SCALE;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
@@ -229,7 +241,7 @@ void main( void ) {
     SELF_TEST_MESS( "ACC SCALE", "ERROR" );
   }
   
-/* Óñòàíîâêà óðîâíÿ ñðàáàòûâàíèÿ */  
+/* Ð£ÑÑ‚Ð°Ð½Ð¾Ð²ÐºÐ° ÑƒÑ€Ð¾Ð²Ð½Ñ ÑÑ€Ð°Ð±Ð°Ñ‚Ñ‹Ð²Ð°Ð½Ð¸Ñ */  
   sval.val1 = ACC_SHOCK_THRESHOLD;
   sval.val2 = 0;
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval );   
@@ -237,7 +249,7 @@ void main( void ) {
     SELF_TEST_MESS( "ACC TRSH", "ERROR" );
   }
 
-/* Ðàçðåøåíèå ïðåðûâàíèÿ */   
+/* Ð Ð°Ð·Ñ€ÐµÑˆÐµÐ½Ð¸Ðµ Ð¿Ñ€ÐµÑ€Ñ‹Ð²Ð°Ð½Ð¸Ñ */   
   struct sensor_trigger trig_thres;  
   trig_thres.type = SENSOR_TRIG_THRESHOLD;
   trig_thres.chan = SENSOR_CHAN_ACCEL_XYZ;
@@ -246,8 +258,8 @@ void main( void ) {
     SELF_TEST_MESS( "ACC TRSH TRG", "ERROR" );
   }
 
-  sval.val1 = ACC_FREFALL_DURATION;       // Äëèòåëüíîñòü
-  sval.val2 = ACC_FREEFALL_THRESHOLD;     // Ïîðîã
+  sval.val1 = ACC_FREFALL_DURATION;       // Ð”Ð»Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾ÑÑ‚ÑŒ
+  sval.val2 = ACC_FREEFALL_THRESHOLD;     // ÐŸÐ¾Ñ€Ð¾Ð³
   err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FREE_FALL, &sval );   
   if (err) {
     SELF_TEST_MESS( "ACC FF", "ERROR" );
@@ -315,10 +327,18 @@ void main( void ) {
           sensor_channel_get( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, val );
           
           float temp = sensor_value_to_double( &val[0] );
+          if (temp > 2) temp = 2;
+          else if (temp <= -2) temp = -2;
           adv_data.x = temp * 64;
-          temp = sensor_value_to_double( &val[1] );
+          
+          temp = sensor_value_to_double( &val[1] );          
+          if (temp > 2) temp = 2;
+          else if (temp <= -2) temp = -2;          
           adv_data.y = temp * 64;
+          
           temp = sensor_value_to_double( &val[2] );
+          if (temp > 2) temp = 2;
+          else if (temp <= -2) temp = -2;          
           adv_data.z = temp * 64;
           
           if (0 != app_vars.last_shock) {
@@ -340,57 +360,72 @@ void main( void ) {
           
           adv_data.counter++;
           
-          //gpio_pin_toggle_dt( &led );
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 #ifdef __DEBUG__            
-          printk( "Send advertisment.\r" );
-          printk( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-          printk( "shock - %d  fall - %d\r", adv_data.shock, adv_data.fall );        
-          printk( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );      
+//          printk( "Send advertisment.\r" );
+//          printk( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+//          printk( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
+//          printk( "fall - %d\r", adv_data.fall );     
+//          printk( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );      
 #endif
           break;          
           
         }
-      case evIrqHi : {
-// Îáðàáîò÷èê ñîáûòèÿ ïî ïðåâûøåíèþ
-/* shock_value (uint8) - âåëè÷èíà óäàðà, âû÷èñëåííàÿ ïî ôîðìóëå (x * x + y * y + z * z) / (255 * 3), 
- * âû÷èñëÿåòñÿ ïðè ñðàáàòûâàíèè ïðåðûâàíèÿ. Ïðè  íåíóëåâîì çíà÷åíèè òàéìåðà shock (ïðåäûäóùèé óäàð áûë ìåíåå 255 ñåêóíä íàçàä) 
+        case evIrqHi : {
+// ÐžÐ±Ñ€Ð°Ð±Ð¾Ñ‚Ñ‡Ð¸Ðº ÑÐ¾Ð±Ñ‹Ñ‚Ð¸Ñ Ð¿Ð¾ Ð¿Ñ€ÐµÐ²Ñ‹ÑˆÐµÐ½Ð¸ÑŽ
+/* shock_value (uint8) - Ð²ÐµÐ»Ð¸Ñ‡Ð¸Ð½Ð° ÑƒÐ´Ð°Ñ€Ð°, Ð²Ñ‹Ñ‡Ð¸ÑÐ»ÐµÐ½Ð½Ð°Ñ Ð¿Ð¾ Ñ„Ð¾Ñ€Ð¼ÑƒÐ»Ðµ (x * x + y * y + z * z) / (255 * 3), 
+ * Ð²Ñ‹Ñ‡Ð¸ÑÐ»ÑÐµÑ‚ÑÑ Ð¿Ñ€Ð¸ ÑÑ€Ð°Ð±Ð°Ñ‚Ñ‹Ð²Ð°Ð½Ð¸Ð¸ Ð¿Ñ€ÐµÑ€Ñ‹Ð²Ð°Ð½Ð¸Ñ. ÐŸÑ€Ð¸  Ð½ÐµÐ½ÑƒÐ»ÐµÐ²Ð¾Ð¼ Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ð¸ Ñ‚Ð°Ð¹Ð¼ÐµÑ€Ð° shock (Ð¿Ñ€ÐµÐ´Ñ‹Ð´ÑƒÑ‰Ð¸Ð¹ ÑƒÐ´Ð°Ñ€ Ð±Ñ‹Ð» Ð¼ÐµÐ½ÐµÐµ 255 ÑÐµÐºÑƒÐ½Ð´ Ð½Ð°Ð·Ð°Ð´) 
  * shock_value = max( (x * x + y * y + z * z) / (255 * 3), previous_shock_value)). 
- * Ïðè îáíóëåíèè òàéìåðà shock çíà÷åíèå shock_value òàêæå îáíóëÿåòñÿ.        
+ * ÐŸÑ€Ð¸ Ð¾Ð±Ð½ÑƒÐ»ÐµÐ½Ð¸Ð¸ Ñ‚Ð°Ð¹Ð¼ÐµÑ€Ð° shock Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ðµ shock_value Ñ‚Ð°ÐºÐ¶Ðµ Ð¾Ð±Ð½ÑƒÐ»ÑÐµÑ‚ÑÑ.        
 */
-        app_vars.last_shock = 1;
-        
-        struct sensor_value val[3] = { 0 };
-        sensor_sample_fetch( acc_lis2dw );
-        sensor_channel_get( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, val );
+ 
+#define SHOCK_MUL                     8
           
-        float temp = sensor_value_to_double( &val[0] );
-        adv_data.x = temp * 64;
-        temp = sensor_value_to_double( &val[1] );
-        adv_data.y = temp * 64;
-        temp = sensor_value_to_double( &val[2] );
-        adv_data.z = temp * 64; 
+          app_vars.last_shock = 1;
+          int temp[3] = { 0 };
+          int result = 0;
+          int8_t val8 = 0;
+        
+          struct sensor_value val[3] = { 0 };
+          sensor_sample_fetch( acc_lis2dw );
+          sensor_channel_get( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, val );          
+         
+          temp[0] = sensor_value_to_double( &val[0] ) * SHOCK_MUL;
+          temp[0] *= temp[0];
+          
+          temp[1] = sensor_value_to_double( &val[1] ) * SHOCK_MUL;
+          temp[1] *= temp[1];
+          
+          temp[2] = sensor_value_to_double( &val[2] ) * SHOCK_MUL;
+          temp[2] *= temp[2];
 
-        int value = ((adv_data.x * adv_data.x  + adv_data.y * adv_data.y + adv_data.z * adv_data.z) / (255 * 3));
-        if (adv_data.shock_value < value) {
-          adv_data.shock_value = value;
-        }
+          result = ( temp[0] + temp[1] + temp[2] ) / (3 * SHOCK_MUL * SHOCK_MUL );
+          
+          val8 = result;
+          if (result > 255) {
+            val8 = 255;
+          }
+        
+          if ((adv_data.shock_value < 0) && (adv_data.shock_value > val8 )) {
+            adv_data.shock_value = val8;
+          }
+          else if (adv_data.shock_value < val8) {
+            adv_data.shock_value = val8;
+          }
         
 #ifdef __DEBUG__        
-          gpio_pin_set_dt( &led, 1 );
-          k_sleep( K_MSEC( 100 ) );
-          gpio_pin_set_dt( &led, 0 );
-          printk( "Threshold IRQ.\n" );
+          printk( "Threshold IRQ.\r" );          
+          printk( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
+          printk( "value - %d\r", result );
+          printk( "val - %d\r", val8 );
+
 #endif        
           break;
         }
-      case evIrqLo : {
+        case evIrqLo : {
           app_vars.last_fall = 1;
 #ifdef __DEBUG__         
-          gpio_pin_set_dt( &led, 1 );
-          k_sleep( K_MSEC( 200 ) );
-          gpio_pin_set_dt( &led, 0 );
-          printk( "FreeFall IRQ.\n" );        
+          printk( "FreeFall IRQ.\r" );        
 #endif        
           break;
         }

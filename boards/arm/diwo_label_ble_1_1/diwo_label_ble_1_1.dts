@@ -1,0 +1,154 @@
+// Copyright (c) 2022 Nordic Semiconductor ASA
+// SPDX-License-Identifier: Apache-2.0
+
+/dts-v1/;
+#include <nordic/nrf52832_qfaa.dtsi>
+
+/ {
+	model = "DiWo Label BLE 1_1";
+	compatible = "diwo,diwo-label-ble-1-1";
+
+	zephyr,user {
+		io-channels = <&adc 4>;
+	};
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 0";
+		};
+	};
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button switch 0";
+		};
+	};
+
+	aliases {
+		led0 = &led0;
+		bootloader-led0 = &led0;
+		mcuboot-led0 = &led0;
+		watchdog0 = &wdt0;
+		sw0 = &button0;
+	};	
+};
+
+&pinctrl {
+	uart0_default: uart0_default {
+		group1 {
+			psels = <NRF_PSEL( UART_TX, 0, 20 )>,
+					<NRF_PSEL( UART_RX, 0, 19 )>;
+		};
+	};
+
+	uart0_sleep: uart0_sleep {
+		group1 {
+			psels = <NRF_PSEL( UART_TX, 0, 20 )>,
+					<NRF_PSEL( UART_RX, 0, 19 )>;
+			low-power-enable;
+		};
+	};
+
+	spi0_default: spi0_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 21)>,
+					<NRF_PSEL(SPIM_MOSI, 0, 15)>,
+					<NRF_PSEL(SPIM_MISO, 0, 16)>;
+		};
+	};
+
+	spi0_sleep: spi0_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 21)>,
+					<NRF_PSEL(SPIM_MOSI, 0, 15)>,
+					<NRF_PSEL(SPIM_MISO, 0, 16)>;
+			low-power-enable;
+		};
+	};
+};
+
+&adc {
+	status = "okay";
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";	
+};
+
+/*
+&uart0 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+*/
+
+&spi0 {
+	compatible = "nordic,nrf-spi";
+	status = "okay";
+	pinctrl-0 = <&spi0_default>;
+	pinctrl-1 = <&spi0_sleep>;
+	pinctrl-names = "default", "sleep";
+	cs-gpios = 	<&gpio0 20 GPIO_ACTIVE_LOW>,
+				<&gpio0 15 GPIO_ACTIVE_LOW>;
+
+	lis2dw12@1 {
+		compatible	= "st,lis2dw12";
+		reg			= <0x1>;
+		status		= "okay";
+//		range		= 16;
+//		odr			= 12;
+//		bw-filt		= 2;
+//		low-noise	= false;
+
+		spi-max-frequency = <8000000>;
+		irq-gpios = <&gpio0 4 0>,
+					<&gpio0 5 0>;
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x0 0xc000>;
+		};
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0xc000 0x32000>;
+		};
+		slot1_partition: partition@3e000 {
+			label = "image-1";
+			reg = <0x3e000 0x32000>;
+		};
+		scratch_partition: partition@70000 {
+			label = "image-scratch";
+			reg = <0x70000 0xa000>;
+		};
+		storage_partition: partition@7a000 {
+			label = "storage";
+			reg = <0x7a000 0x6000>;
+		};
+	};
+};
+

@@ -1,0 +1,54 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31605.320
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{803FD0C6-D64E-4E16-9DC3-1DAEC859A3D2}") = "diwo_label_1_1", "diwo_label_1_1.vgdbproj", "{E0B23510-E3D4-429C-B672-A017BBCD04AA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|diwo_label_ble_1_1 = Debug|diwo_label_ble_1_1
+		Debug|diwo_label_ble_nfc_1_0 = Debug|diwo_label_ble_nfc_1_0
+		Debug|nrf52840dk_nrf52840 = Debug|nrf52840dk_nrf52840
+		Debug|nrf52dk_nrf52832 = Debug|nrf52dk_nrf52832
+		Debug|nrf5340dk_nrf5340_cpuapp = Debug|nrf5340dk_nrf5340_cpuapp
+		Release|diwo_label_ble_1_1 = Release|diwo_label_ble_1_1
+		Release|diwo_label_ble_nfc_1_0 = Release|diwo_label_ble_nfc_1_0
+		Release|nrf52840dk_nrf52840 = Release|nrf52840dk_nrf52840
+		Release|nrf52dk_nrf52832 = Release|nrf52dk_nrf52832
+		Release|nrf5340dk_nrf5340_cpuapp = Release|nrf5340dk_nrf5340_cpuapp
+		Debug|diwo_label_nfc_1_0 = Debug|diwo_label_nfc_1_0
+		Release|diwo_label_nfc_1_0 = Release|diwo_label_nfc_1_0
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|diwo_label_ble_1_1.ActiveCfg = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|diwo_label_ble_1_1.Build.0 = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|diwo_label_ble_1_1.ActiveCfg = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|diwo_label_ble_1_1.Build.0 = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|diwo_label_ble_nfc_1_0.ActiveCfg = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|diwo_label_ble_nfc_1_0.Build.0 = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|diwo_label_ble_nfc_1_0.ActiveCfg = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|diwo_label_ble_nfc_1_0.Build.0 = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|nrf52840dk_nrf52840.ActiveCfg = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|nrf52840dk_nrf52840.Build.0 = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf52840dk_nrf52840.ActiveCfg = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf52840dk_nrf52840.Build.0 = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|nrf52dk_nrf52832.ActiveCfg = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|nrf52dk_nrf52832.Build.0 = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf52dk_nrf52832.ActiveCfg = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf52dk_nrf52832.Build.0 = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|nrf5340dk_nrf5340_cpuapp.Build.0 = Debug|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf5340dk_nrf5340_cpuapp.Build.0 = Release|diwo_label_ble_1_1
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|diwo_label_nfc_1_0.ActiveCfg = Debug|diwo_label_nfc_1_0
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Debug|diwo_label_nfc_1_0.Build.0 = Debug|diwo_label_nfc_1_0
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|diwo_label_nfc_1_0.ActiveCfg = Release|diwo_label_nfc_1_0
+		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|diwo_label_nfc_1_0.Build.0 = Release|diwo_label_nfc_1_0
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1C44EFB6-6E44-414A-8236-57E8D8FCBF54}
+	EndGlobalSection
+EndGlobal

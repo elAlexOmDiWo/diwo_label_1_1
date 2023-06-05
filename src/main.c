@@ -19,6 +19,7 @@
 #include "bsp.h"
 #include "wdt.h"
 #include "settings.h"
+#include "nfc.h"
 
 #include "main.h"
 #include "settings.h"
@@ -218,7 +219,9 @@ void main( void ) {
   if (true != init_led()) {
     SELF_TEST_MESS( "LED", "ERORR" );
   }
-  
+
+  init_nfc();
+
   led_blinck( 100 );
   
   acc_lis2dw = DEVICE_DT_GET_ANY( st_lis2dw12 );

@@ -66,6 +66,7 @@
             <string>B:\Projects\nRF52\v2.1.1\zephyr\drivers\sensor\stmemsc</string>
           </AlternateHeaderDirectories>
           <HeaderDiscoveryMode>Default</HeaderDiscoveryMode>
+          <ResourceDirectories />
         </CMakeTargetSpecificSettings>
       </TargetSpecificSettings>
       <SetLDLibraryPathFromDependentArtifacts>true</SetLDLibraryPathFromDependentArtifacts>
@@ -173,7 +174,7 @@
         <DebugMethod>
           <ID>jlink-jtag</ID>
           <InterfaceID>com.sysprogs.debug.jlink.jlinksw</InterfaceID>
-          <InterfaceSerialNumber>000683114327</InterfaceSerialNumber>
+          <InterfaceSerialNumber>000069409487</InterfaceSerialNumber>
           <Configuration xsi:type="com.visualgdb.edp.segger.settings">
             <CommandLine>-select USB -device $$SYS:MCU_ID$$ -speed auto -if SWD</CommandLine>
             <ProgramMode>Enabled</ProgramMode>

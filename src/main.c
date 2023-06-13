@@ -30,14 +30,14 @@
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-#define __DEBUG__                         1
+//#define __DEBUG__                         1
 #define __ENABLE_SELF_TEST_MESS__         1
 //#define __ENABLE_WDT__                    1
 
 #define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
 #define ACC_FULL_SCALE                    160                 // мС^2
 
-#ifndef __DEBUG__
+#if ( __DEBUG__ != 1 )
 #define ACC_SHOCK_THRESHOLD               60                  // мС^2
 #define __ENABLE_WDT__                    1
 #define ODR_VALUE                         25
@@ -210,9 +210,11 @@ void main( void ) {
   
   init_board();
   
-//  if (true != init_button( button_cb )) {
-//    LOG_PRINTK( "Error init button\r" );
-//  }	
+#if ( __ENABLE_BUTTON__ == 1 )  
+  if (true != init_button( button_cb )) {
+    LOG_PRINTK( "Error init button\r" );
+  }	
+#endif
 
   if (true != init_led()) {
     SELF_TEST_MESS( "LED", "ERORR" );
@@ -362,11 +364,11 @@ void main( void ) {
           
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 #ifdef __DEBUG__            
-//          printk( "Send advertisment.\r" );
-//          printk( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-//          printk( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
-//          printk( "fall - %d\r", adv_data.fall );     
-//          printk( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );      
+          printk( "Send advertisment.\r" );
+          printk( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+          printk( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
+          printk( "fall - %d\r", adv_data.fall );     
+          printk( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );      
 #endif
           break;          
           
@@ -405,11 +407,8 @@ void main( void ) {
           if (result > 255) {
             val8 = 255;
           }
-        
-          if ((adv_data.shock_value < 0) && (adv_data.shock_value > val8 )) {
-            adv_data.shock_value = val8;
-          }
-          else if (adv_data.shock_value < val8) {
+
+          if (adv_data.shock_value < val8) {
             adv_data.shock_value = val8;
           }
         
@@ -417,7 +416,7 @@ void main( void ) {
           printk( "Threshold IRQ.\r" );          
           printk( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
           printk( "value - %d\r", result );
-          printk( "val - %d\r", val8 );
+          printk( "val - %d\r\n", val8 );
 
 #endif        
           break;

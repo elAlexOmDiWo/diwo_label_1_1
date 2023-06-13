@@ -220,8 +220,6 @@ void main( void ) {
     SELF_TEST_MESS( "LED", "ERORR" );
   }
 
-  init_nfc();
-
   led_blinck( 100 );
   
   acc_lis2dw = DEVICE_DT_GET_ANY( st_lis2dw12 );
@@ -290,12 +288,12 @@ void main( void ) {
   }
   SELF_TEST_MESS( "BLE", "OK" );
 
-  if (0 > run_device()) {
-    printk( "Error device setting\n");
-    while (1) {
-      k_sleep(K_SECONDS( 1 ));
-    }
-  }
+//  if (0 > run_device()) {
+//    printk( "Error device setting\n");
+//    while (1) {
+//      k_sleep(K_SECONDS( 1 ));
+//    }
+//  }
 
 #if ( __ENABLE_WDT__ == 1 )    
   if (true != init_wdt( 10000 )) {
@@ -306,7 +304,9 @@ void main( void ) {
   
   k_timer_init( &adv_timer, adv_timer_exp, NULL );
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
- 
+
+  init_nfc();  
+  
   SELF_TEST_MESS( "APP START", "OK" );   
  
   print_device_info();  

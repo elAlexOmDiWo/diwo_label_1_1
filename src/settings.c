@@ -140,6 +140,11 @@ int run_device(void) {
   if (0 != (err = (bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd,
                                    ARRAY_SIZE(sd))))) {
     printk("Error BT Start - %d\n", err);
+    switch (err) {
+      case ECONNREFUSED: {
+        break;
+      }
+    }
   }
 
 //  bt_gatt_service_register(&app_settings_svc);

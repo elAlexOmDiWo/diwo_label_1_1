@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<VisualGDBUserPreferences xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<VisualGDBUserPreferences xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <UserDefinedVariableValues />
   <DebugPreferences xsi:type="com.visualgdb.debug.embedded.preferences">
     <CatchpointConfiguration>
@@ -11,28 +11,14 @@
     </CatchpointConfiguration>
     <MaskInterruptsWhileStepping>false</MaskInterruptsWhileStepping>
     <MemoryWindowPreferences />
-    <LiveVariables />
-    <NestedLiveVariables>
-      <NestedVariableSettingsCollection>
-        <ID>com.sysprogs.AllGlobals</ID>
-        <Variables />
-      </NestedVariableSettingsCollection>
-      <NestedVariableSettingsCollection>
-        <ID>com.sysprogs.SpecificVariables</ID>
-        <Variables />
-      </NestedVariableSettingsCollection>
-      <NestedVariableSettingsCollection>
-        <ID>com.sysprogs.Custom</ID>
-        <Variables />
-      </NestedVariableSettingsCollection>
-    </NestedLiveVariables>
+    <a />
+    <d>
+      <a>AllGlobals</a>
+      <b>false</b>
+    </d>
     <Suggestions>
       <HardwareRegisterFilters />
     </Suggestions>
-    <LiveVariablePreferences>
-      <ViewMode>SpecificVariables</ViewMode>
-      <FavoritesOnly>false</FavoritesOnly>
-    </LiveVariablePreferences>
     <HardwareRegisters>
       <HardwareRegisterRecord>
         <Name>P0.DIR</Name>

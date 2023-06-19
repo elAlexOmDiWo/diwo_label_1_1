@@ -6,7 +6,7 @@
       <PathStyle>Unknown</PathStyle>
     </CustomSourceDirectories>
     <AutoProgramSPIFFSPartition>true</AutoProgramSPIFFSPartition>
-    <BoardRoot>C:\ncs</BoardRoot>
+    <BoardRoot>$(ProjectDir)</BoardRoot>
   </Project>
   <Build xsi:type="com.visualgdb.build.cmake">
     <BuildLogMode xsi:nil="true" />
@@ -76,7 +76,7 @@
       <DefaultHeaderDiscoveryMode>None</DefaultHeaderDiscoveryMode>
       <EnableFastUpToDateCheck>true</EnableFastUpToDateCheck>
       <NRFConnectExtension>
-        <SDKVersion>v2.1.2</SDKVersion>
+        <SDKVersion>v2.1.1</SDKVersion>
       </NRFConnectExtension>
     </ProjectModeSettings>
   </Build>
@@ -214,6 +214,9 @@
       </DebugSettingsOverride>
       <ProjectSettingsExtension xsi:type="com.visualgdb.project.external.nrfconnect.extension">
         <BoardName>diwo_label_ble_1_1</BoardName>
+        <OverlayFiles>
+          <string>$(ProjectDir)\boards\arm\diwo_label_ble_nfc_1_0.overlay</string>
+        </OverlayFiles>
       </ProjectSettingsExtension>
     </VisualGDBConfiguration>
     <VisualGDBConfiguration>

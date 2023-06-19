@@ -9,12 +9,10 @@
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
 
+LOG_MODULE_REGISTER( main );
+
 #include "button.h"
 #include "led.h"
-
-#include "lis2dw12_reg.h"
-//#include "d:\Alex\Projects\Nordic\v2.3.0\zephyr\drivers\sensor\lis2dw12\lis2dw12.h"
-
 #include "diwo_label.h"
 #include "bsp.h"
 #include "wdt.h"
@@ -35,7 +33,7 @@
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-#define __DEBUG__                         1
+#define __DEBUG__                         0
 #define __ENABLE_SELF_TEST_MESS__         1
 //#define __ENABLE_WDT__                    1
 
@@ -123,14 +121,6 @@ static const struct device *acc_lis2dw = NULL;
 
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
-
-//int read_regs( const struct device *dev, uint8_t start, uint8_t* data, int count ) {
-//  const struct lis2dw12_device_config *cfg = dev->config;
-//  stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
-//
-//  int err = lis2dw12_read_reg( ctx, start, data, count );
-//  return err;
-//}
 
 /** Callback по срабатыванию таймера
  */
@@ -321,11 +311,11 @@ void main( void ) {
 #ifdef __DEBUG__
           if (err) {
 
-            printk("Advertising failed to stop (err %d)\n", err);
+            LOG_ERR( "Advertising failed to stop (err %d)\n", err );
 
           } 
           else {
-            printk("Advertising ok stop\n");
+            LOG_INF( "Advertising ok stop\n" );
           }
 #endif          
           led_blinck( 1 );

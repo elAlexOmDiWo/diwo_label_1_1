@@ -3,3 +3,4 @@ build
 .visualgdb
 .vs
 
+/j-flash/*.jflash

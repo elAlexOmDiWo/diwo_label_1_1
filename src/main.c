@@ -9,7 +9,11 @@
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER( main );
+#define LOG_LEVEL_MAIN      LOG_LEVEL_INF
+
+LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
+
+#define __BOARD_NAME__          "DiWo Label 0.1"
 
 #include "button.h"
 #include "led.h"
@@ -22,6 +26,32 @@ LOG_MODULE_REGISTER( main );
 #include "main.h"
 #include "settings.h"
 
+#include "app_defines.h"
+
+#ifndef FW_MAJOR
+#define FW_MAJOR    1
+#endif
+
+#ifndef FW_MINOR
+#define FW_MINOR    0
+#endif
+
+#ifndef FW_PATCH
+#define FW_PATCH    0
+#endif
+
+#define FW_VER      FW_PATCH + FW_MINOR * 100 + FW_MAJOR * 10000
+
+#ifndef HW_MAJOR
+#define HW_MAJOR    1
+#endif
+
+#ifndef HW_MINOR
+#define HW_MINOR    0
+#endif
+
+#define HW_VER      HW_MINOR + HW_MAJOR * 100
+
 #define RTT_CTRL_CLEAR                "[2J"
 
 #define RTT_CTRL_TEXT_BLACK           "[2;30m"
@@ -33,9 +63,8 @@ LOG_MODULE_REGISTER( main );
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-#define __DEBUG__                         0
+#define __DEBUG__                         1
 #define __ENABLE_SELF_TEST_MESS__         1
-//#define __ENABLE_WDT__                    1
 
 #define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
 #define ACC_FULL_SCALE                    160                 // мС^2
@@ -195,6 +224,11 @@ void main( void ) {
   LOG_PRINTK( RTT_CTRL_CLEAR );
   LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
 #endif
+
+  LOG_PRINTK( "BOARD Name - DiWo Label 0.1\r" );
+  LOG_PRINTK( "FW VERSION - %d.%d.%d\r", FW_MAJOR, FW_MINOR, FW_PATCH );
+  LOG_PRINTK( "HW VERSION - %d.%d\r\r", HW_MAJOR, HW_MINOR );
+
   
   SELF_TEST_MESS( "INIT START", "OK" );
   
@@ -212,7 +246,7 @@ void main( void ) {
 
   led_blinck( 100 );
   
-  acc_lis2dw = DEVICE_DT_GET_ANY( st_lis2dw12 );
+  acc_lis2dw = DEVICE_DT_GET_ANY( st_lis2de12 );
   if (acc_lis2dw == NULL) {
     SELF_TEST_MESS( "ACC", "ERROR" );
     while (1) {
@@ -278,13 +312,6 @@ void main( void ) {
   }
   SELF_TEST_MESS( "BLE", "OK" );
 
-//  if (0 > run_device()) {
-//    printk( "Error device setting\n");
-//    while (1) {
-//      k_sleep(K_SECONDS( 1 ));
-//    }
-//  }
-
 #if ( __ENABLE_WDT__ == 1 )    
   if (true != init_wdt( 10000 )) {
     SELF_TEST_MESS( "WDT", "ERROR" );
@@ -295,7 +322,12 @@ void main( void ) {
   k_timer_init( &adv_timer, adv_timer_exp, NULL );
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
 
-  init_nfc();  
+  if (0 != init_nfc()) {
+    SELF_TEST_MESS( "NFC", "ERROR" );
+  }
+  else {
+    SELF_TEST_MESS( "NFC", "OK" );
+  }
   
   SELF_TEST_MESS( "APP START", "OK" );   
  
@@ -370,13 +402,13 @@ void main( void ) {
           adv_data.counter++;
           
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
-#ifdef __DEBUG__            
-//          printk( "Send advertisment.\r" );
-//          printk( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-//          printk( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
-//          printk( "fall - %d\r", adv_data.fall );     
-//          printk( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );      
-#endif
+#if ( __DEBUG__ == 1 )
+          LOG_PRINTK( "Send advertisment.\r" );
+          LOG_PRINTK( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+          LOG_PRINTK( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
+          LOG_PRINTK( "fall - %d\r", adv_data.fall );     
+          LOG_PRINTK( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );
+#endif          
           break;          
           
         }

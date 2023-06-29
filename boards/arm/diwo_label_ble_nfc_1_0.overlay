@@ -71,8 +71,8 @@
 	pinctrl-names = "default", "sleep";
 	cs-gpios = 	<&gpio0 26 GPIO_ACTIVE_LOW>;
 
-	lis2dw12@0 {
-		compatible	= "st,lis2dw12";
+	lis2dh@0 {
+		compatible	= "st,lis2dh";
 		reg			= <0x0>;
 		status		= "okay";
 

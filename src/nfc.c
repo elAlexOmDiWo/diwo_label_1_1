@@ -147,7 +147,7 @@ int init_nfc(void) {
     printk("Cannot start emulation!\n");
     goto fail;
   }
-  printk("NFC configuration done\n");
+//  printk("NFC configuration done\n");
 
   return 0;
 

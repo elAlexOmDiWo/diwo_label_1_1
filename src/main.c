@@ -66,13 +66,14 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define __DEBUG__                         1
 #define __ENABLE_SELF_TEST_MESS__         1
 
-#define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
+//#define DEFAULT_ADV_PERIOD_S              1     //3                   // Период отсылки рекламы по умолчанию
 #define ACC_FULL_SCALE                    160                 // мС^2
 
 #if ( __DEBUG__ != 1 )
 #define ACC_SHOCK_THRESHOLD               60                  // мС^2
 #define __ENABLE_WDT__                    1
 #define ODR_VALUE                         25
+#define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
 #else
 
 #warning Debug. Change before release
@@ -81,6 +82,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define __ENABLE_WDT__                    0
 #define __SEGGER_FORMAT                   1
 #define ODR_VALUE                         100
+#define DEFAULT_ADV_PERIOD_S              1                   // Период отсылки рекламы по умолчанию
 #endif
 
 #define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
@@ -146,10 +148,12 @@ static const struct bt_data ad[] = {
   BT_DATA( BT_DATA_MANUFACTURER_DATA, &adv_data, sizeof( adv_data ) ),
 };
 
-static const struct device *acc_lis2dw = NULL;
+static const struct device *acc_lis2 = NULL;
 
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
+
+void print_device_info( void );
 
 /** Callback по срабатыванию таймера
  */
@@ -182,41 +186,6 @@ void lis12dw_trigger_freefall_handler( const struct device *dev, const struct se
   k_msgq_put( &qevent, &event, K_NO_WAIT );  
 }
 
-void print_device_info( void ) {
-  int count = 1;
-  bt_id_get( &app_vars.addr, &count );
-
-  LOG_PRINTK( "\n" );
-
-#if ( __SEGGER_FORMAT == 1 )
-  LOG_PRINTK( RTT_CTRL_TEXT_CYAN ); 
-#endif  
-  
-  LOG_PRINTK( "%-26s - %02x:%02x:%02x:%02x:%02x:%02x\r",
-    "MAC ADDR",
-    app_vars.addr.a.val[0], 
-    app_vars.addr.a.val[1], 
-    app_vars.addr.a.val[2], 
-    app_vars.addr.a.val[3], 
-    app_vars.addr.a.val[4], 
-    app_vars.addr.a.val[5] );
-  
-  LOG_PRINTK( "%-26s - %02x%02x%02x%02x%02x%02x\r",
-    "MAC ADDR REVERSE",    
-    app_vars.addr.a.val[5], 
-    app_vars.addr.a.val[4], 
-    app_vars.addr.a.val[3], 
-    app_vars.addr.a.val[2], 
-    app_vars.addr.a.val[1], 
-    app_vars.addr.a.val[0] ); 
-  
-#if ( __SEGGER_FORMAT == 1 )
-  LOG_PRINTK( RTT_CTRL_TEXT_WHITE ); 
-#endif
-
-  LOG_PRINTK( "\n" );
-}
-
 void main( void ) {
   int err;
 
@@ -246,8 +215,8 @@ void main( void ) {
 
   led_blinck( 100 );
   
-  acc_lis2dw = DEVICE_DT_GET_ANY( st_lis2de12 );
-  if (acc_lis2dw == NULL) {
+  acc_lis2 = DEVICE_DT_GET_ANY( st_lis2dh );
+  if (acc_lis2 == NULL) {
     SELF_TEST_MESS( "ACC", "ERROR" );
     while (1) {
       k_sleep( K_SECONDS( 1 ));
@@ -259,12 +228,12 @@ void main( void ) {
   
   sval.val1 = ODR_VALUE;
   sval.val2 = 0;
-  sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
+  sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
   
 /* Установка шкалы */  
   sval.val1 = ACC_FULL_SCALE;
   sval.val2 = 0;
-  err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
+  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
   if (err) {
     SELF_TEST_MESS( "ACC SCALE", "ERROR" );
   }
@@ -272,7 +241,7 @@ void main( void ) {
 /* Установка уровня срабатывания */  
   sval.val1 = ACC_SHOCK_THRESHOLD;
   sval.val2 = 0;
-  err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval );   
+  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval );   
   if (err) {
     SELF_TEST_MESS( "ACC TRSH", "ERROR" );
   }
@@ -281,14 +250,14 @@ void main( void ) {
   struct sensor_trigger trig_thres;  
   trig_thres.type = SENSOR_TRIG_THRESHOLD;
   trig_thres.chan = SENSOR_CHAN_ACCEL_XYZ;
-  err = sensor_trigger_set( acc_lis2dw, &trig_thres, lis12dw_trigger_handler );  
+  err = sensor_trigger_set( acc_lis2, &trig_thres, lis12dw_trigger_handler );  
   if (err) {
     SELF_TEST_MESS( "ACC TRSH TRG", "ERROR" );
   }
 
   sval.val1 = ACC_FREFALL_DURATION;       // Длительность
   sval.val2 = ACC_FREEFALL_THRESHOLD;     // Порог
-  err = sensor_attr_set( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FREE_FALL, &sval );   
+  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FREE_FALL, &sval );   
   if (err) {
     SELF_TEST_MESS( "ACC FF", "ERROR" );
   }
@@ -297,7 +266,7 @@ void main( void ) {
   
   trig_fall.type = 	SENSOR_TRIG_FREEFALL;
   trig_fall.chan = SENSOR_CHAN_ACCEL_XYZ;
-  err = sensor_trigger_set( acc_lis2dw, &trig_fall, lis12dw_trigger_freefall_handler );  
+  err = sensor_trigger_set( acc_lis2, &trig_fall, lis12dw_trigger_freefall_handler );  
   if (err) {
     SELF_TEST_MESS( "ACC FF TRG", "ERROR" );
   }  
@@ -364,8 +333,12 @@ void main( void ) {
           }
           
           struct sensor_value val[3] = { 0 };
-          sensor_sample_fetch( acc_lis2dw );
-          sensor_channel_get( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, val );
+          sensor_sample_fetch( acc_lis2 );
+          sensor_channel_get( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, val );
+          float fval[3] = { 0 };
+          fval[0] = sensor_value_to_double( &val[0] );
+          fval[1] = sensor_value_to_double( &val[1] );
+          fval[2] = sensor_value_to_double( &val[2] );
           
           float temp = sensor_value_to_double( &val[0] );
           if (temp > 2) temp = 2;
@@ -404,7 +377,8 @@ void main( void ) {
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 #if ( __DEBUG__ == 1 )
           LOG_PRINTK( "Send advertisment.\r" );
-          LOG_PRINTK( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+//          LOG_PRINTK( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+          LOG_PRINTK( "x - %d  y - %d  z - %d\r", (int)(fval[0] * 100), (int)(fval[1] * 100), (int)(fval[2] * 100) );
           LOG_PRINTK( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
           LOG_PRINTK( "fall - %d\r", adv_data.fall );     
           LOG_PRINTK( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );
@@ -428,8 +402,8 @@ void main( void ) {
           int8_t val8 = 0;
         
           struct sensor_value val[3] = { 0 };
-          sensor_sample_fetch( acc_lis2dw );
-          sensor_channel_get( acc_lis2dw, SENSOR_CHAN_ACCEL_XYZ, val );          
+          sensor_sample_fetch( acc_lis2 );
+          sensor_channel_get( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, val );          
          
           temp[0] = sensor_value_to_double( &val[0] ) * SHOCK_MUL;
           temp[0] *= temp[0];
@@ -474,4 +448,39 @@ void main( void ) {
 
 __weak int run_device(void) {
   return 0;
+}
+
+void print_device_info( void ) {
+  int count = 1;
+  bt_id_get( &app_vars.addr, &count );
+
+  LOG_PRINTK( "\n" );
+
+#if ( __SEGGER_FORMAT == 1 )
+  LOG_PRINTK( RTT_CTRL_TEXT_CYAN ); 
+#endif  
+  
+  LOG_PRINTK( "%-26s - %02x:%02x:%02x:%02x:%02x:%02x\r",
+    "MAC ADDR",
+    app_vars.addr.a.val[0], 
+    app_vars.addr.a.val[1], 
+    app_vars.addr.a.val[2], 
+    app_vars.addr.a.val[3], 
+    app_vars.addr.a.val[4], 
+    app_vars.addr.a.val[5] );
+  
+  LOG_PRINTK( "%-26s - %02x%02x%02x%02x%02x%02x\r",
+    "MAC ADDR REVERSE",    
+    app_vars.addr.a.val[5], 
+    app_vars.addr.a.val[4], 
+    app_vars.addr.a.val[3], 
+    app_vars.addr.a.val[2], 
+    app_vars.addr.a.val[1], 
+    app_vars.addr.a.val[0] ); 
+  
+#if ( __SEGGER_FORMAT == 1 )
+  LOG_PRINTK( RTT_CTRL_TEXT_WHITE ); 
+#endif
+
+  LOG_PRINTK( "\n" );
 }

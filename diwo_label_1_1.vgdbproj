@@ -82,13 +82,7 @@
   </Build>
   <CustomBuild>
     <PreSyncActions />
-    <PreBuildActions>
-      <CustomActionBase xsi:type="SetVariableFromFileAction">
-        <SkipWhenRunningCommandList>false</SkipWhenRunningCommandList>
-        <FilePath>$(ActiveSourcePath)</FilePath>
-        <VariableName>__DEBUG__</VariableName>
-      </CustomActionBase>
-    </PreBuildActions>
+    <PreBuildActions />
     <PostBuildActions />
     <PreCleanActions />
     <PostCleanActions />

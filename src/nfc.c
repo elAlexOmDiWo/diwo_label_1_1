@@ -14,6 +14,8 @@
 
 #include <zephyr/bluetooth/bluetooth.h>
 
+#include <nrf52.h>
+
 #define MAX_REC_COUNT 2
 #define NDEF_MSG_BUF_SIZE 128
 
@@ -113,13 +115,41 @@ static int welcome_msg_encode(uint8_t *buffer, uint32_t *len) {
   return err;
 }
 
+int set_nfc_id( uint8_t* addr ) {
+//  NRF_NFCT_Type* nfct = (NRF_NFCT_Type *)0x40005000;  
+  
+  uint32_t nfc_id = 0;
+
+  uint32_t* preg = (uint32_t * )0x40005590;
+  nfc_id = addr[3];
+  nfc_id <<= 8;
+  nfc_id |= addr[2];
+  nfc_id <<= 8;
+  nfc_id |= addr[1];
+  nfc_id <<= 8;
+  nfc_id |= addr[0];  
+  
+  *preg++ = nfc_id;
+//  nfct->NFCID1_LAST = nfc_id;
+
+  nfc_id = 0;
+  nfc_id = addr[5];
+  nfc_id <<= 8;
+  nfc_id |= addr[4];  
+
+  *preg++ = nfc_id;
+//  nfct->NFCID1_2ND_LAST = nfc_id;  
+  
+  return 0;
+}
+
 int init_nfc(void) {
   uint32_t len = sizeof(ndef_msg_buf);
 
   int count = 1;
   bt_addr_le_t addr;
   bt_id_get( &addr, &count );
-
+  
   snprintk( addr_text, sizeof( addr_text ), "%02x%02x%02x%02x%02x%02x",
              addr.a.val[5],
              addr.a.val[4],
@@ -132,7 +162,70 @@ int init_nfc(void) {
     printk("Cannot setup NFC T2T library!\n");
     goto fail;
   }
+//  
+//  NRF_NFCT_Type* nfct = (NRF_NFCT_Type *)0x40005000;  
+//  
+//  uint32_t nfc_id = 0;  
+//  
+//  nfc_id = (addr.a.val[0] << 4) | (addr.a.val[1] << 2) | addr.a.val[2];
+//  nfct->NFCID1_2ND_LAST = nfc_id;
+//    
+//  nfc_id = (addr.a.val[3] << 6) | (addr.a.val[4] << 4) | (addr.a.val[5] << 2) | 0;
+//  nfct->NFCID1_LAST = nfc_id;  
 
+  set_nfc_id( addr.a.val );
+  
+//#define UID_ST        0x88
+//  
+//  uint8_t uid[10];// = { 0x00, addr.a.val[5], addr.a.val[4], addr.a.val[3],  }
+//  uid[0] = 0x00;
+//  uid[1] = 0x01;
+//  uid[2] = 0x02;
+//  uid[3] = UID_ST ^ uid[0] ^ uid[1] ^ uid[2];
+//  
+//  uid[4] = 0x03;
+//  uid[5] = 0x04;
+//  uid[6] = 0x05;
+//  uid[7] = 0x06;  
+//
+//  uid[8] = uid[3] ^ uid[4] ^ uid[5] ^ uid[6];
+//  uid[9] = 0x01;
+//  
+//  uint8_t temp_uid[10];
+//  nrfx_err_t nrf_err = NRFX_SUCCESS;
+  
+ 
+//  NRF_NFCT_Type* nfct = (NRF_NFCT_Type *)0x40005000;  
+//  
+//  uint32_t nfc_id = 0;
+  
+//  nfc_id = ( uid[0] << 4 ) | ( uid[1] << 2 ) | uid[2];
+//  nfct->NFCID1_2ND_LAST = nfc_id;
+//  
+//  nfc_id = (uid[3] << 6) | (uid[4] << 4) | (uid[5] << 2) | uid[6];
+//  nfct->NFCID1_LAST = nfc_id;  
+  
+//  nrf_err = nfc_platform_nfcid1_default_bytes_get( temp_uid, sizeof( temp_uid ) );  
+//  if( NRFX_SUCCESS != nrf_err ) {
+//    printk( "Error read UID\n" );
+//  }
+
+//  nfc_id = (uid[0] << 4) | (uid[1] << 2) | uid[2];
+//  nfct->NFCID1_2ND_LAST = nfc_id;
+//  
+//  nfc_id = (uid[3] << 6) | (uid[4] << 4) | (uid[5] << 2) | uid[6];
+//  nfct->NFCID1_LAST = nfc_id;  
+  
+//  err = nfc_t2t_internal_set( uid, sizeof( uid ));
+//  if( 0 != err ) {
+//    printk( "Error write UID\n" );
+//  }
+
+//  nrf_err = nfc_platform_nfcid1_default_bytes_get( temp_uid, sizeof( temp_uid ) );   
+//  if( NRFX_SUCCESS != nrf_err ) {
+//    printk( "Error read UID\n" );
+//  }
+  
   if (welcome_msg_encode(ndef_msg_buf, &len) < 0) {
     printk("Cannot encode message!\n");
     goto fail;

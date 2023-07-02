@@ -31,7 +31,10 @@
       <b>false</b>
     </d>
     <Suggestions>
-      <HardwareRegisterFilters />
+      <HardwareRegisterFilters>
+        <string>nfc</string>
+        <string>SENSRES</string>
+      </HardwareRegisterFilters>
     </Suggestions>
     <HardwareRegisters>
       <HardwareRegisterRecord>
@@ -104,6 +107,54 @@
           <IsFavorite>false</IsFavorite>
           <IsLive>false</IsLive>
           <LastUsed>133118122408172361</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>NFCT.NFCID1_LAST</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>133327661260176604</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>NFCT.NFCID1_2ND_LAST</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>133327661266360484</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>NFCT.NFCID1_3RD_LAST</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>133327661272580753</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>NFCT.SENSRES.PLATFCONFIG</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>133327661170210338</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>NFCT.AUTOCOLRESCONFIG</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>133327880080711579</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>NFCT.SENSRES</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>0</LastUsed>
         </State>
       </HardwareRegisterRecord>
     </HardwareRegisters>

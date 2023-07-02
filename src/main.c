@@ -13,7 +13,7 @@
 
 LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
-#define __BOARD_NAME__          "DiWo Label 0.1"
+#define __BOARD_NAME__          "DiWo Label BLE 1.0"
 
 #include "button.h"
 #include "led.h"
@@ -26,7 +26,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #include "main.h"
 #include "settings.h"
 
-#include "app_defines.h"
+#include "lis2dh.h"
 
 #ifndef FW_MAJOR
 #define FW_MAJOR    1
@@ -43,11 +43,11 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define FW_VER      FW_PATCH + FW_MINOR * 100 + FW_MAJOR * 10000
 
 #ifndef HW_MAJOR
-#define HW_MAJOR    1
+#define HW_MAJOR    0
 #endif
 
 #ifndef HW_MINOR
-#define HW_MINOR    0
+#define HW_MINOR    3
 #endif
 
 #define HW_VER      HW_MINOR + HW_MAJOR * 100
@@ -66,30 +66,31 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define __DEBUG__                         1
 #define __ENABLE_SELF_TEST_MESS__         1
 
-//#define DEFAULT_ADV_PERIOD_S              1     //3                   // Период отсылки рекламы по умолчанию
-#define ACC_FULL_SCALE                    160                 // мС^2
-
 #if ( __DEBUG__ != 1 )
 #define ACC_SHOCK_THRESHOLD               60                  // мС^2
 #define __ENABLE_WDT__                    1
+#define __SEGGER_FORMAT                   1
 #define ODR_VALUE                         25
 #define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
+#define ACC_FULL_SCALE                    20                 // мС^2
 #else
 
 #warning Debug. Change before release
 
 #define ACC_SHOCK_THRESHOLD               40                  // мС^2
+#define ACC_SHOCK_DURATION                3
+
 #define __ENABLE_WDT__                    0
 #define __SEGGER_FORMAT                   1
 #define ODR_VALUE                         100
 #define DEFAULT_ADV_PERIOD_S              1                   // Период отсылки рекламы по умолчанию
+#define ACC_FULL_SCALE                    20                  // мС^2
 #endif
 
 #define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
 #define ACC_FREEFALL_THRESHOLD            7   //ff_thrs_7           // Порог события free-fall ( 0 - 7 )
 #define MAX_SHOCK_TIME                    255                 // Максимальное время удержания события удара ( сек )
 #define MAX_FALL_TIME                     255                 // Максимальное время удержания события падения ( сек )
-
 
 #define BATT_READ_DELAY                   10                  // Делитель опроса батареии
 
@@ -103,6 +104,12 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #else
 #define SELF_TEST_MESS( MODULE, STATUS )
 #endif
+
+const char* BOARD_NAME = __BOARD_NAME__;
+  
+struct lis2dh_data *lis2dh;  
+  
+uint8_t reg[64];
 
 typedef struct {
   int last_shock;
@@ -171,19 +178,31 @@ static void button_cb( const struct device *port, struct gpio_callback *cb, gpio
 /** Прерывание по превышению уровня 
 */
 void lis12dw_trigger_handler( const struct device *dev, const struct sensor_trigger *trig ) {
-  if (trig->type == SENSOR_TRIG_THRESHOLD) {
+  if( trig->type == SENSOR_TRIG_THRESHOLD ) {
     uint8_t event = evIrqHi;
     k_msgq_put( &qevent, &event, K_NO_WAIT );     
   }
-  else if (trig->type == SENSOR_TRIG_FREEFALL) {
+  else if( trig->type == SENSOR_TRIG_FREEFALL ) {
     uint8_t event = evIrqLo;
     k_msgq_put( &qevent, &event, K_NO_WAIT );       
-  } 
+  }
+  else if( trig->type == SENSOR_TRIG_DELTA ) {
+    uint8_t event = evIrqHi;
+    k_msgq_put( &qevent, &event, K_NO_WAIT );      
+  }
 }
 
 void lis12dw_trigger_freefall_handler( const struct device *dev, const struct sensor_trigger *trig ) {
   uint8_t event = evIrqLo;
   k_msgq_put( &qevent, &event, K_NO_WAIT );  
+}
+
+int read_regs( struct lis2dh_data *lis2dh, void* data, int len ) {
+  uint8_t* p = data;
+  for( int i = 0; i < len; i++ ) {
+    if( 0 != lis2dh->hw_tf->read_reg( acc_lis2, i, p++ )) return -1;
+  }
+  return 0;
 }
 
 void main( void ) {
@@ -194,7 +213,8 @@ void main( void ) {
   LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
 #endif
 
-  LOG_PRINTK( "BOARD Name - DiWo Label 0.1\r" );
+  LOG_PRINTK( "\r----------\r");
+  LOG_PRINTK( "BOARD Name - %s\r", BOARD_NAME );
   LOG_PRINTK( "FW VERSION - %d.%d.%d\r", FW_MAJOR, FW_MINOR, FW_PATCH );
   LOG_PRINTK( "HW VERSION - %d.%d\r\r", HW_MAJOR, HW_MINOR );
 
@@ -203,12 +223,6 @@ void main( void ) {
   
   init_board();
   
-#if ( __ENABLE_BUTTON__ == 1 )  
-  if (true != init_button( button_cb )) {
-    LOG_PRINTK( "Error init button\r" );
-  }	
-#endif
-
   if (true != init_led()) {
     SELF_TEST_MESS( "LED", "ERORR" );
   }
@@ -222,6 +236,26 @@ void main( void ) {
       k_sleep( K_SECONDS( 1 ));
     }
   }
+  
+  uint8_t reg_val = 0;
+  struct lis2dh_data *lis2dh = acc_lis2->data;
+  
+  err = lis2dh->hw_tf->read_reg( acc_lis2, LIS2DH_REG_WAI, &reg_val );
+  if( err < 0 ) {
+    SELF_TEST_MESS( "ACC", "ERROR" );
+    while( 1 ) {
+      k_sleep( K_SECONDS( 1 ) );
+    }
+  }
+
+  if( reg_val != LIS2DH_CHIP_ID ) {
+    LOG_ERR( "Invalid chip ID: %02x\n", reg_val );
+    SELF_TEST_MESS( "ACC", "ERROR" );
+    while( 1 ) {
+      k_sleep( K_SECONDS( 1 ) );
+    }
+  }
+  
   SELF_TEST_MESS( "ACC", "OK" );
   
   struct sensor_value sval = { 0 };
@@ -237,40 +271,7 @@ void main( void ) {
   if (err) {
     SELF_TEST_MESS( "ACC SCALE", "ERROR" );
   }
-  
-/* Установка уровня срабатывания */  
-  sval.val1 = ACC_SHOCK_THRESHOLD;
-  sval.val2 = 0;
-  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sval );   
-  if (err) {
-    SELF_TEST_MESS( "ACC TRSH", "ERROR" );
-  }
-
-/* Разрешение прерывания */   
-  struct sensor_trigger trig_thres;  
-  trig_thres.type = SENSOR_TRIG_THRESHOLD;
-  trig_thres.chan = SENSOR_CHAN_ACCEL_XYZ;
-  err = sensor_trigger_set( acc_lis2, &trig_thres, lis12dw_trigger_handler );  
-  if (err) {
-    SELF_TEST_MESS( "ACC TRSH TRG", "ERROR" );
-  }
-
-  sval.val1 = ACC_FREFALL_DURATION;       // Длительность
-  sval.val2 = ACC_FREEFALL_THRESHOLD;     // Порог
-  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FREE_FALL, &sval );   
-  if (err) {
-    SELF_TEST_MESS( "ACC FF", "ERROR" );
-  }
- 
-  struct sensor_trigger trig_fall;  
-  
-  trig_fall.type = 	SENSOR_TRIG_FREEFALL;
-  trig_fall.chan = SENSOR_CHAN_ACCEL_XYZ;
-  err = sensor_trigger_set( acc_lis2, &trig_fall, lis12dw_trigger_freefall_handler );  
-  if (err) {
-    SELF_TEST_MESS( "ACC FF TRG", "ERROR" );
-  }  
-  
+   
   /* Initialize the Bluetooth Subsystem */
   err = bt_enable( NULL );
   if (err) {
@@ -311,15 +312,16 @@ void main( void ) {
           err = bt_le_adv_stop();
 #ifdef __DEBUG__
           if (err) {
-
             LOG_ERR( "Advertising failed to stop (err %d)\n", err );
-
           } 
           else {
             LOG_INF( "Advertising ok stop\n" );
           }
-#endif          
+#endif       
+          
+#ifdef __DEBUG__          
           led_blinck( 1 );
+#endif 
           
 #if ( __ENABLE_WDT__ == 1 )          
           reset_wdt();
@@ -332,28 +334,9 @@ void main( void ) {
             batt_counter = BATT_READ_DELAY;
           }
           
-          struct sensor_value val[3] = { 0 };
-          sensor_sample_fetch( acc_lis2 );
-          sensor_channel_get( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, val );
-          float fval[3] = { 0 };
-          fval[0] = sensor_value_to_double( &val[0] );
-          fval[1] = sensor_value_to_double( &val[1] );
-          fval[2] = sensor_value_to_double( &val[2] );
-          
-          float temp = sensor_value_to_double( &val[0] );
-          if (temp > 2) temp = 2;
-          else if (temp <= -2) temp = -2;
-          adv_data.x = temp * 64;
-          
-          temp = sensor_value_to_double( &val[1] );          
-          if (temp > 2) temp = 2;
-          else if (temp <= -2) temp = -2;          
-          adv_data.y = temp * 64;
-          
-          temp = sensor_value_to_double( &val[2] );
-          if (temp > 2) temp = 2;
-          else if (temp <= -2) temp = -2;          
-          adv_data.z = temp * 64;
+          lis2dh->hw_tf->read_reg( acc_lis2, 0x29, &adv_data.x );
+          lis2dh->hw_tf->read_reg( acc_lis2, 0x2b, &adv_data.y );
+          lis2dh->hw_tf->read_reg( acc_lis2, 0x2d, &adv_data.z );          
           
           if (0 != app_vars.last_shock) {
             app_vars.last_shock += app_settings.adv_period;
@@ -376,12 +359,11 @@ void main( void ) {
           
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 #if ( __DEBUG__ == 1 )
-          LOG_PRINTK( "Send advertisment.\r" );
-//          LOG_PRINTK( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-          LOG_PRINTK( "x - %d  y - %d  z - %d\r", (int)(fval[0] * 100), (int)(fval[1] * 100), (int)(fval[2] * 100) );
+          LOG_PRINTK( "\rSend advertisment.\r" );
+          LOG_PRINTK( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
           LOG_PRINTK( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
           LOG_PRINTK( "fall - %d\r", adv_data.fall );     
-          LOG_PRINTK( "temp - %d  batt - %d  count - %d\n", adv_data.temp, adv_data.bat, adv_data.counter );
+          LOG_PRINTK( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );
 #endif          
           break;          
           

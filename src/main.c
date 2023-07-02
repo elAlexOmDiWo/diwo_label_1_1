@@ -37,7 +37,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #endif
 
 #ifndef FW_PATCH
-#define FW_PATCH    0
+#define FW_PATCH    1
 #endif
 
 #define FW_VER      FW_PATCH + FW_MINOR * 100 + FW_MAJOR * 10000

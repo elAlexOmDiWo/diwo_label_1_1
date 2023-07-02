@@ -7,6 +7,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/logging/log.h>
 
 #include <nfc_t2t_lib.h>
 #include <nfc/ndef/msg.h>
@@ -14,7 +15,9 @@
 
 #include <zephyr/bluetooth/bluetooth.h>
 
-#include <nrf52.h>
+#define LOG_LEVEL_NFC      LOG_LEVEL_INF
+
+LOG_MODULE_REGISTER( nfc, LOG_LEVEL_NFC );
 
 #define MAX_REC_COUNT 2
 #define NDEF_MSG_BUF_SIZE 128
@@ -97,27 +100,25 @@ static int welcome_msg_encode(uint8_t *buffer, uint32_t *len) {
   
   err = nfc_ndef_msg_record_add(&NFC_NDEF_MSG(nfc_text_msg), &NFC_NDEF_TEXT_RECORD_DESC(nfc_en_text_rec));
   if (err < 0) {
-    printk("Cannot add first record!\n");
+    LOG_ERR("Cannot add first record!");
     return err;
   }
 
   err = nfc_ndef_msg_record_add(&NFC_NDEF_MSG(nfc_text_msg), &NFC_NDEF_TEXT_RECORD_DESC(ble_addr_text_rec));
   if (err < 0) {
-    printk("Cannot add second record!\n");
+    LOG_ERR( "Cannot add second record!" );
     return err;
   }
 
   err = nfc_ndef_msg_encode(&NFC_NDEF_MSG(nfc_text_msg), buffer, len);
   if (err < 0) {
-    printk("Cannot encode message!\n");
+    LOG_ERR( "Cannot encode message!" );
   }
 
   return err;
 }
 
-int set_nfc_id( uint8_t* addr ) {
-//  NRF_NFCT_Type* nfct = (NRF_NFCT_Type *)0x40005000;  
-  
+int set_nfc_id( uint8_t* addr ) {  
   uint32_t nfc_id = 0;
 
   uint32_t* preg = (uint32_t * )0x40005590;
@@ -130,7 +131,6 @@ int set_nfc_id( uint8_t* addr ) {
   nfc_id |= addr[0];  
   
   *preg++ = nfc_id;
-//  nfct->NFCID1_LAST = nfc_id;
 
   nfc_id = 0;
   nfc_id = addr[5];
@@ -138,7 +138,6 @@ int set_nfc_id( uint8_t* addr ) {
   nfc_id |= addr[4];  
 
   *preg++ = nfc_id;
-//  nfct->NFCID1_2ND_LAST = nfc_id;  
   
   return 0;
 }
@@ -159,88 +158,30 @@ int init_nfc(void) {
              addr.a.val[0]);
 
   if (nfc_t2t_setup(nfc_callback, NULL) < 0) {
-    printk("Cannot setup NFC T2T library!\n");
+    LOG_ERR( "Cannot setup NFC T2T library!" );
     goto fail;
   }
-//  
-//  NRF_NFCT_Type* nfct = (NRF_NFCT_Type *)0x40005000;  
-//  
-//  uint32_t nfc_id = 0;  
-//  
-//  nfc_id = (addr.a.val[0] << 4) | (addr.a.val[1] << 2) | addr.a.val[2];
-//  nfct->NFCID1_2ND_LAST = nfc_id;
-//    
-//  nfc_id = (addr.a.val[3] << 6) | (addr.a.val[4] << 4) | (addr.a.val[5] << 2) | 0;
-//  nfct->NFCID1_LAST = nfc_id;  
+  LOG_DBG( "OK setup NFC T2T library!" );
 
   set_nfc_id( addr.a.val );
   
-//#define UID_ST        0x88
-//  
-//  uint8_t uid[10];// = { 0x00, addr.a.val[5], addr.a.val[4], addr.a.val[3],  }
-//  uid[0] = 0x00;
-//  uid[1] = 0x01;
-//  uid[2] = 0x02;
-//  uid[3] = UID_ST ^ uid[0] ^ uid[1] ^ uid[2];
-//  
-//  uid[4] = 0x03;
-//  uid[5] = 0x04;
-//  uid[6] = 0x05;
-//  uid[7] = 0x06;  
-//
-//  uid[8] = uid[3] ^ uid[4] ^ uid[5] ^ uid[6];
-//  uid[9] = 0x01;
-//  
-//  uint8_t temp_uid[10];
-//  nrfx_err_t nrf_err = NRFX_SUCCESS;
-  
- 
-//  NRF_NFCT_Type* nfct = (NRF_NFCT_Type *)0x40005000;  
-//  
-//  uint32_t nfc_id = 0;
-  
-//  nfc_id = ( uid[0] << 4 ) | ( uid[1] << 2 ) | uid[2];
-//  nfct->NFCID1_2ND_LAST = nfc_id;
-//  
-//  nfc_id = (uid[3] << 6) | (uid[4] << 4) | (uid[5] << 2) | uid[6];
-//  nfct->NFCID1_LAST = nfc_id;  
-  
-//  nrf_err = nfc_platform_nfcid1_default_bytes_get( temp_uid, sizeof( temp_uid ) );  
-//  if( NRFX_SUCCESS != nrf_err ) {
-//    printk( "Error read UID\n" );
-//  }
-
-//  nfc_id = (uid[0] << 4) | (uid[1] << 2) | uid[2];
-//  nfct->NFCID1_2ND_LAST = nfc_id;
-//  
-//  nfc_id = (uid[3] << 6) | (uid[4] << 4) | (uid[5] << 2) | uid[6];
-//  nfct->NFCID1_LAST = nfc_id;  
-  
-//  err = nfc_t2t_internal_set( uid, sizeof( uid ));
-//  if( 0 != err ) {
-//    printk( "Error write UID\n" );
-//  }
-
-//  nrf_err = nfc_platform_nfcid1_default_bytes_get( temp_uid, sizeof( temp_uid ) );   
-//  if( NRFX_SUCCESS != nrf_err ) {
-//    printk( "Error read UID\n" );
-//  }
-  
   if (welcome_msg_encode(ndef_msg_buf, &len) < 0) {
-    printk("Cannot encode message!\n");
+    LOG_ERR( "Cannot encode message!" );
     goto fail;
   }
+  LOG_DBG( "OK encode message!" );
 
   if (nfc_t2t_payload_set(ndef_msg_buf, len) < 0) {
-    printk("Cannot set payload!\n");
+    LOG_ERR( "Cannot set payload!" );
     goto fail;
   }
+  LOG_DBG( "OK set payload!" );
 
   if (nfc_t2t_emulation_start() < 0) {
-    printk("Cannot start emulation!\n");
+    LOG_ERR( "Cannot start emulation!" );
     goto fail;
   }
-//  printk("NFC configuration done\n");
+  LOG_DBG( "OK start emulation!" );
 
   return 0;
 

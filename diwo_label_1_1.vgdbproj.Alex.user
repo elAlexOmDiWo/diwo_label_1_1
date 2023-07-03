@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<VisualGDBUserPreferences xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<VisualGDBUserPreferences xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <UserDefinedVariableValues />
   <DebugPreferences xsi:type="com.visualgdb.debug.embedded.preferences">
     <CatchpointConfiguration>
@@ -11,28 +11,14 @@
     </CatchpointConfiguration>
     <MaskInterruptsWhileStepping>false</MaskInterruptsWhileStepping>
     <MemoryWindowPreferences />
-    <a />
-    <e>
-      <c>
-        <b>com.sysprogs.AllGlobals</b>
-        <a />
-      </c>
-      <c>
-        <b>com.sysprogs.SpecificVariables</b>
-        <a />
-      </c>
-      <c>
-        <b>com.sysprogs.Custom</b>
-        <a />
-      </c>
-    </e>
-    <d>
-      <a>SpecificVariables</a>
-      <b>false</b>
-    </d>
+    <LiveVariables />
     <Suggestions>
       <HardwareRegisterFilters />
     </Suggestions>
+    <LiveVariablePreferences>
+      <ViewMode>AllGlobals</ViewMode>
+      <FavoritesOnly>false</FavoritesOnly>
+    </LiveVariablePreferences>
     <HardwareRegisters>
       <HardwareRegisterRecord>
         <Name>P0.DIR</Name>

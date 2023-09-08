@@ -15,13 +15,18 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
 #define __BOARD_NAME__          "DiWo Label BLE 1.0"
 
+#define ENABLE_NFC            0
+
 #include "button.h"
 #include "led.h"
 #include "diwo_label.h"
 #include "bsp.h"
 #include "wdt.h"
 #include "settings.h"
+
+#if ( ENABLE_NFC == 1 )
 #include "nfc.h"
+#endif
 
 #include "main.h"
 #include "settings.h"
@@ -292,12 +297,14 @@ void main( void ) {
   k_timer_init( &adv_timer, adv_timer_exp, NULL );
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
 
+#if ( ENABLE_NFC == 1 )
   if (0 != init_nfc()) {
     SELF_TEST_MESS( "NFC", "ERROR" );
   }
   else {
     SELF_TEST_MESS( "NFC", "OK" );
   }
+#endif
   
   SELF_TEST_MESS( "APP START", "OK" );   
  

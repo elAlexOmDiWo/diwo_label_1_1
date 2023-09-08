@@ -63,7 +63,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-#define __DEBUG__                         1
+#define __DEBUG__                         0
 #define __ENABLE_SELF_TEST_MESS__         1
 
 #if ( __DEBUG__ != 1 )

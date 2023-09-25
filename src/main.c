@@ -317,7 +317,7 @@ void main( void ) {
         case evTimer : {
           static int batt_counter = 0;
           err = bt_le_adv_stop();
-#ifdef __DEBUG__
+#if ( __DEBUG__ == 1 )
           if (err) {
             LOG_ERR( "Advertising failed to stop (err %d)\n", err );
           } 
@@ -326,7 +326,7 @@ void main( void ) {
           }
 #endif       
           
-#ifdef __DEBUG__          
+#if ( __DEBUG__ == 1 )          
           led_blinck( 1 );
 #endif 
           
@@ -414,7 +414,7 @@ void main( void ) {
             adv_data.shock_value = val8;
           }
         
-#ifdef __DEBUG__        
+#if ( __DEBUG__ == 1 )        
           printk( "Threshold IRQ.\r" );          
           printk( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
           printk( "value - %d\r", result );
@@ -425,7 +425,7 @@ void main( void ) {
         }
         case evIrqLo : {
           app_vars.last_fall = 1;
-#ifdef __DEBUG__         
+#if ( __DEBUG__ == 1 )         
           printk( "FreeFall IRQ.\r" );        
 #endif        
           break;

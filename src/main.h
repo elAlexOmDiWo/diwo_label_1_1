@@ -25,6 +25,7 @@
 #define __ENABLE_BLE__ 0
 #define __ENABLE_WDT__ 0
 #define __ENABLE_NFC__  0
+#define __ENABLE_DEEP_SLEEP__ 0
 #define __SEGGER_FORMAT 1
 #define ODR_VALUE 100
 #define DEFAULT_ADV_PERIOD_S 1 // Период отсылки рекламы по умолчанию

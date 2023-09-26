@@ -32,7 +32,6 @@
 			label = "Push button switch 0";
 		};
 	};
-
 	aliases {
 		led0 = &led0;
 		bootloader-led0 = &led0;

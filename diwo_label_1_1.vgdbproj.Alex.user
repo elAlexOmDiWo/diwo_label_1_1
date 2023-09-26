@@ -11,6 +11,13 @@
     </CatchpointConfiguration>
     <MaskInterruptsWhileStepping>false</MaskInterruptsWhileStepping>
     <MemoryWindowPreferences />
+    <RealTimeWatchPreferences>
+      <Presets />
+      <ImplicitPreset>
+        <Watches />
+      </ImplicitPreset>
+      <StopOnOverflow>false</StopOnOverflow>
+    </RealTimeWatchPreferences>
     <e />
     <b>
       <a>

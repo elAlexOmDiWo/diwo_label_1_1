@@ -9,6 +9,10 @@
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
 
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/policy.h>
+
 #define LOG_LEVEL_MAIN      LOG_LEVEL_INF
 
 LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
@@ -23,6 +27,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #include "settings.h"
 #include "nfc.h"
 #include "acc.h"
+#include "power.h"
 
 #include "main.h"
 #include "settings.h"
@@ -152,7 +157,7 @@ void main( void ) {
   LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
 #endif
 
-  print_reset_reason();  
+//  print_reset_reason();  
   
   LOG_PRINTK( "\r----------\r");
   LOG_PRINTK( "BOARD Name - %s\r", BOARD_NAME );
@@ -216,7 +221,7 @@ void main( void ) {
 #endif
   
   k_timer_init( &adv_timer, adv_timer_exp, NULL );
-  k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
+ // k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
 
 #if ( __ENABLE_NFC__ == 1 ) 
   if (0 != init_nfc()) {
@@ -231,20 +236,34 @@ void main( void ) {
  
   print_device_info();  
   
-	nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
-	nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);  
+  uint32_t reas = get_reset_reason();
+  if( reas & NRF_POWER_RESETREAS_OFF_MASK) {
+    init_button();
+  }
+  else {
+#if ( __ENABLE_DEEP_SLEEP__ == 1)    
+	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
+	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
+    pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
+    k_sleep(K_SECONDS(5)); 
+#else  SELF_TEST_MESS( "DEEP SLEEP", "DISABLE" );    
+#endif    
+  }
   
   while (1) {
     uint8_t event = 0;
     if (0 == k_msgq_get( &qevent, &event, K_FOREVER )) {
+
+      printk( "Event - %d\r", event );
+      
       switch (event) {
         case evTimer : {
           static int batt_counter = 0;
 #if (__ENABLE_BLE__ == 1)          
           err = bt_le_adv_stop();
 
-          i
-      
+          if (err) {
+            LOG_ERR( "Advertising failed to stop (err %d)\n", err );
           } 
           else {
             LOG_INF( "Advertising ok stop\n" );

@@ -5,7 +5,7 @@
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
-#include <zephyr/drivers/sensor.h>
+//#include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
 
@@ -22,11 +22,12 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #include "wdt.h"
 #include "settings.h"
 #include "nfc.h"
+#include "acc.h"
 
 #include "main.h"
 #include "settings.h"
 
-#include "lis2dh.h"
+//#include "lis2dh.h"
 
 #ifndef FW_MAJOR
 #define FW_MAJOR    1
@@ -63,29 +64,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-#define __DEBUG__                         1
-#define __ENABLE_SELF_TEST_MESS__         1
 
-#if ( __DEBUG__ != 1 )
-#define ACC_SHOCK_THRESHOLD               60                  // мС^2
-#define __ENABLE_WDT__                    1
-#define __SEGGER_FORMAT                   1
-#define ODR_VALUE                         25
-#define DEFAULT_ADV_PERIOD_S              3                   // Период отсылки рекламы по умолчанию
-#define ACC_FULL_SCALE                    20                 // мС^2
-#else
-
-#warning Debug. Change before release
-
-#define ACC_SHOCK_THRESHOLD               40                  // мС^2
-#define ACC_SHOCK_DURATION                3
-
-#define __ENABLE_WDT__                    0
-#define __SEGGER_FORMAT                   1
-#define ODR_VALUE                         100
-#define DEFAULT_ADV_PERIOD_S              1                   // Период отсылки рекламы по умолчанию
-#define ACC_FULL_SCALE                    20                  // мС^2
-#endif
 
 #define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
 #define ACC_FREEFALL_THRESHOLD            7   //ff_thrs_7           // Порог события free-fall ( 0 - 7 )
@@ -107,7 +86,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
 const char* BOARD_NAME = __BOARD_NAME__;
   
-struct lis2dh_data *lis2dh;  
+//struct lis2dh_data *lis2dh;  
   
 uint8_t reg[64];
 
@@ -117,14 +96,14 @@ typedef struct {
   bt_addr_le_t addr;
 } app_var_s;
 
-/** События приложения */
-typedef enum {
-  evNone  = 0,
-  evTimer,
-  evIrqHi,
-  evIrqLo,
-  evButton,  
-} events_e;
+///** События приложения */
+//typedef enum {
+//  evNone  = 0,
+//  evTimer,
+//  evIrqHi,
+//  evIrqLo,
+//  evButton,  
+//} events_e;
 
 app_settings_s app_settings = {
   .adv_period = DEFAULT_ADV_PERIOD_S,
@@ -156,12 +135,20 @@ static const struct bt_data ad[] = {
   BT_DATA( BT_DATA_MANUFACTURER_DATA, &adv_data, sizeof( adv_data ) ),
 };
 
-static const struct device *acc_lis2 = NULL;
+//static const struct device *acc_lis2 = NULL;
 
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
 
 void print_device_info( void );
+
+/** \brief send event to main loop 
+*   \param event
+*   \return status    - 0 - OK, < 0 - error
+*/
+int send_event(events_e event) {
+  return k_msgq_put(&qevent, &event, K_NO_WAIT);  
+}
 
 /** Callback по срабатыванию таймера
  */
@@ -171,41 +158,38 @@ void adv_timer_exp( struct k_timer *timer_id ) {
 }
 
 //#if 0
-static void button_cb( const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins ) {
-  uint8_t event = evButton;
-  k_msgq_put(&qevent, &event, K_NO_WAIT);  
-}
+
 //#endif
 
-/** Прерывание по превышению уровня 
-*/
-void lis12dw_trigger_handler( const struct device *dev, const struct sensor_trigger *trig ) {
-  if( trig->type == SENSOR_TRIG_THRESHOLD ) {
-    uint8_t event = evIrqHi;
-    k_msgq_put( &qevent, &event, K_NO_WAIT );     
-  }
-  else if( trig->type == SENSOR_TRIG_FREEFALL ) {
-    uint8_t event = evIrqLo;
-    k_msgq_put( &qevent, &event, K_NO_WAIT );       
-  }
-  else if( trig->type == SENSOR_TRIG_DELTA ) {
-    uint8_t event = evIrqHi;
-    k_msgq_put( &qevent, &event, K_NO_WAIT );      
-  }
-}
+///** Прерывание по превышению уровня 
+//*/
+//void lis12dw_trigger_handler( const struct device *dev, const struct sensor_trigger *trig ) {
+//  if( trig->type == SENSOR_TRIG_THRESHOLD ) {
+//    uint8_t event = evIrqHi;
+//    k_msgq_put( &qevent, &event, K_NO_WAIT );     
+//  }
+//  else if( trig->type == SENSOR_TRIG_FREEFALL ) {
+//    uint8_t event = evIrqLo;
+//    k_msgq_put( &qevent, &event, K_NO_WAIT );       
+//  }
+//  else if( trig->type == SENSOR_TRIG_DELTA ) {
+//    uint8_t event = evIrqHi;
+//    k_msgq_put( &qevent, &event, K_NO_WAIT );      
+//  }
+//}
+//
+//void lis12dw_trigger_freefall_handler( const struct device *dev, const struct sensor_trigger *trig ) {
+//  uint8_t event = evIrqLo;
+//  k_msgq_put( &qevent, &event, K_NO_WAIT );  
+//}
 
-void lis12dw_trigger_freefall_handler( const struct device *dev, const struct sensor_trigger *trig ) {
-  uint8_t event = evIrqLo;
-  k_msgq_put( &qevent, &event, K_NO_WAIT );  
-}
-
-int read_regs( struct lis2dh_data *lis2dh, void* data, int len ) {
-  uint8_t* p = data;
-  for( int i = 0; i < len; i++ ) {
-    if( 0 != lis2dh->hw_tf->read_reg( acc_lis2, i, p++ )) return -1;
-  }
-  return 0;
-}
+//int read_regs( struct lis2dh_data *lis2dh, void* data, int len ) {
+//  uint8_t* p = data;
+//  for( int i = 0; i < len; i++ ) {
+//    if( 0 != lis2dh->hw_tf->read_reg( acc_lis2, i, p++ )) return -1;
+//  }
+//  return 0;
+//}
 
 void main( void ) {
   int err;
@@ -225,7 +209,7 @@ void main( void ) {
   
   init_board();
 
-  if (true != init_button(button_cb)) {
+  if (true != init_button()) {
     SELF_TEST_MESS("BUTTON", "ERORR");
   }
   else {
@@ -237,49 +221,56 @@ void main( void ) {
   }
 
   led_blinck( 100 );
-  
-  acc_lis2 = DEVICE_DT_GET_ANY( st_lis2dh );
-  if (acc_lis2 == NULL) {
-    SELF_TEST_MESS( "ACC", "ERROR" );
-    while (1) {
-      k_sleep( K_SECONDS( 1 ));
-    }
+
+  if (true != init_acc()) {
+    SELF_TEST_MESS("ACC", "ERROR");
   }
-  
-  uint8_t reg_val = 0;
-  struct lis2dh_data *lis2dh = acc_lis2->data;
-  
-  err = lis2dh->hw_tf->read_reg( acc_lis2, LIS2DH_REG_WAI, &reg_val );
-  if( err < 0 ) {
-    SELF_TEST_MESS( "ACC", "ERROR" );
-    while( 1 ) {
-      k_sleep( K_SECONDS( 1 ) );
-    }
+  else {
+    SELF_TEST_MESS("ACC", "OK");
   }
 
-  if( reg_val != LIS2DH_CHIP_ID ) {
-    LOG_ERR( "Invalid chip ID: %02x\n", reg_val );
-    SELF_TEST_MESS( "ACC", "ERROR" );
-    while( 1 ) {
-      k_sleep( K_SECONDS( 1 ) );
-    }
-  }
+//  acc_lis2 = DEVICE_DT_GET_ANY(st_lis2dh);
+//  if (acc_lis2 == NULL) {
+//    SELF_TEST_MESS( "ACC", "ERROR" );
+//    while (1) {
+//      k_sleep( K_SECONDS( 1 ));
+//    }
+//  }
+  
+//  uint8_t reg_val = 0;
+//  struct lis2dh_data *lis2dh = acc_lis2->data;
+//  
+//  err = lis2dh->hw_tf->read_reg( acc_lis2, LIS2DH_REG_WAI, &reg_val );
+//  if( err < 0 ) {
+//    SELF_TEST_MESS( "ACC", "ERROR" );
+//    while( 1 ) {
+//      k_sleep( K_SECONDS( 1 ) );
+//    }
+//  }
+
+//  if( reg_val != LIS2DH_CHIP_ID ) {
+//    LOG_ERR( "Invalid chip ID: %02x\n", reg_val );
+//    SELF_TEST_MESS( "ACC", "ERROR" );
+//    while( 1 ) {
+//      k_sleep( K_SECONDS( 1 ) );
+//    }
+//  }
   
   SELF_TEST_MESS( "ACC", "OK" );
   
-  struct sensor_value sval = { 0 };
-  
-  sval.val1 = ODR_VALUE;
-  sval.val2 = 0;
-  sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
-  
-/* Установка шкалы */  
-  sval.val1 = ACC_FULL_SCALE;
-  sval.val2 = 0;
-  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
-  if (err) {
-    SELF_TEST_MESS( "ACC SCALE", "ERROR" );
-  }
+//  struct sensor_value sval = { 0 };
+//  
+//  sval.val1 = ODR_VALUE;
+//  sval.val2 = 0;
+//  sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
+//  
+///* Установка шкалы */  
+//  sval.val1 = ACC_FULL_SCALE;
+//  sval.val2 = 0;
+//  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
+//  if (err) {
+//    SELF_TEST_MESS( "ACC SCALE", "ERROR" );
+//  }
    
   /* Initialize the Bluetooth Subsystem */
   err = bt_enable( NULL );
@@ -343,10 +334,12 @@ void main( void ) {
             batt_counter = BATT_READ_DELAY;
           }
           
-          lis2dh->hw_tf->read_reg( acc_lis2, 0x29, &adv_data.x );
-          lis2dh->hw_tf->read_reg( acc_lis2, 0x2b, &adv_data.y );
-          lis2dh->hw_tf->read_reg( acc_lis2, 0x2d, &adv_data.z );          
-          
+//          lis2dh->hw_tf->read_reg( acc_lis2, 0x29, &adv_data.x );
+//          lis2dh->hw_tf->read_reg( acc_lis2, 0x2b, &adv_data.y );
+//          lis2dh->hw_tf->read_reg( acc_lis2, 0x2d, &adv_data.z );
+
+          read_adv_acc_data(&adv_data);
+
           if (0 != app_vars.last_shock) {
             app_vars.last_shock += app_settings.adv_period;
             if (app_vars.last_shock > MAX_SHOCK_TIME) {
@@ -393,9 +386,10 @@ void main( void ) {
           int8_t val8 = 0;
         
           struct sensor_value val[3] = { 0 };
-          sensor_sample_fetch( acc_lis2 );
-          sensor_channel_get( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, val );          
-         
+//          sensor_sample_fetch( acc_lis2 );
+//          sensor_channel_get( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, val );
+          read_sensor_value(val);
+
           temp[0] = sensor_value_to_double( &val[0] ) * SHOCK_MUL;
           temp[0] *= temp[0];
           
@@ -446,7 +440,7 @@ __weak int run_device(void) {
   return 0;
 }
 
-__weak bool init_button(gpio_callback_handler_t handler) {
+__weak bool init_button( void ) {
   return true;
 }
 

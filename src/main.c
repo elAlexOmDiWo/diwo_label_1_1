@@ -123,6 +123,7 @@ typedef enum {
   evTimer,
   evIrqHi,
   evIrqLo,
+  evButton,  
 } events_e;
 
 app_settings_s app_settings = {
@@ -169,11 +170,12 @@ void adv_timer_exp( struct k_timer *timer_id ) {
   k_msgq_put( &qevent, &event, K_NO_WAIT );
 }
 
-#if 0
+//#if 0
 static void button_cb( const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins ) {
-  printk( "Button event\r" );
+  uint8_t event = evButton;
+  k_msgq_put(&qevent, &event, K_NO_WAIT);  
 }
-#endif
+//#endif
 
 /** Прерывание по превышению уровня 
 */
@@ -222,7 +224,14 @@ void main( void ) {
   SELF_TEST_MESS( "INIT START", "OK" );
   
   init_board();
-  
+
+  if (true != init_button(button_cb)) {
+    SELF_TEST_MESS("BUTTON", "ERORR");
+  }
+  else {
+    SELF_TEST_MESS("BUTTON", "OK");
+  }
+
   if (true != init_led()) {
     SELF_TEST_MESS( "LED", "ERORR" );
   }
@@ -406,21 +415,26 @@ void main( void ) {
           if (adv_data.shock_value < val8) {
             adv_data.shock_value = val8;
           }
-        
-#ifdef __DEBUG__        
-          printk( "Threshold IRQ.\r" );          
-          printk( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
-          printk( "value - %d\r", result );
-          printk( "val - %d\r\n", val8 );
 
+#if (__DEBUG__ == 1)
+          LOG_PRINTK( "Threshold IRQ.\r" );
+          LOG_PRINTK( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
+          LOG_PRINTK( "value - %d\r", result );
+          LOG_PRINTK( "val - %d\r\n", val8 );
 #endif        
           break;
         }
         case evIrqLo : {
           app_vars.last_fall = 1;
-#ifdef __DEBUG__         
-          printk( "FreeFall IRQ.\r" );        
+#if (__DEBUG__ == 1)
+          LOG_PRINTK( "FreeFall IRQ.\r" );        
 #endif        
+          break;
+        }
+        case evButton: {
+#if (__DEBUG__ == 1)
+          LOG_PRINTK("Button event\r");
+#endif
           break;
         }
       }
@@ -430,6 +444,10 @@ void main( void ) {
 
 __weak int run_device(void) {
   return 0;
+}
+
+__weak bool init_button(gpio_callback_handler_t handler) {
+  return true;
 }
 
 void print_device_info( void ) {

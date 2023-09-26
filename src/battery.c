@@ -18,7 +18,7 @@
 
 #include "battery.h"
 
-LOG_MODULE_REGISTER( BATTERY, CONFIG_ADC_LOG_LEVEL );
+LOG_MODULE_REGISTER(BATTERY, LOG_LEVEL_INF );
 
 #define VBATT DT_PATH(vbatt)
 #define ZEPHYR_USER DT_PATH(zephyr_user)
@@ -137,7 +137,7 @@ static int divider_setup( void ) {
 #endif /* CONFIG_ADC_var */
 
   rc = adc_channel_setup( ddp->adc, accp );
-  LOG_INF( "Setup AIN%u got %d", iocp->channel, rc );
+  LOG_DBG( "Setup AIN%u got %d", iocp->channel, rc );
 
   return rc;
 }
@@ -148,7 +148,7 @@ static int battery_setup( const struct device *arg ) {
   int rc = divider_setup();
 
   battery_ok = (rc == 0);
-  LOG_INF( "Battery setup: %d %d", rc, battery_ok );
+  LOG_DBG( "Battery setup: %d %d", rc, battery_ok );
   return rc;
 }
 
@@ -181,22 +181,15 @@ int battery_sample( void ) {
     if (rc == 0) {
       int32_t val = ddp->raw;
 
-      adc_raw_to_millivolts(adc_ref_internal( ddp->adc ),
-        ddp->adc_cfg.gain,
-        sp->resolution,
-        &val  );
+      adc_raw_to_millivolts(adc_ref_internal( ddp->adc ), ddp->adc_cfg.gain, sp->resolution, &val  );
 
       if (dcp->output_ohm != 0) {
-        rc = val * (uint64_t)dcp->full_ohm
-        	/ dcp->output_ohm;
-        LOG_INF("raw %u ~ %u mV => %d mV\n",
-          ddp->raw,
-          val,
-          rc  );
+        rc = val * (uint64_t)dcp->full_ohm / dcp->output_ohm;
+        LOG_DBG("raw %u ~ %u mV => %d mV\n", ddp->raw, val, rc  );
       }
       else {
         rc = val;
-        LOG_INF( "raw %u ~ %u mV\n", ddp->raw, val );
+        LOG_DBG( "raw %u ~ %u mV\n", ddp->raw, val );
       }
     }
   }
@@ -213,8 +206,7 @@ unsigned int battery_level_pptt(unsigned int batt_mV,
     return pb->lvl_pptt;
   }
   /* Go down to the last point at or below the measured voltage. */
-  while ((pb->lvl_pptt > 0)
-         && (batt_mV < pb->lvl_mV)) {
+  while ((pb->lvl_pptt > 0) && (batt_mV < pb->lvl_mV)) {
     ++pb;
   }
   if (batt_mV < pb->lvl_mV) {
@@ -225,8 +217,5 @@ unsigned int battery_level_pptt(unsigned int batt_mV,
   /* Linear interpolation between below and above points. */
   const struct battery_level_point *pa = pb - 1;
 
-  return pb->lvl_pptt
-         + ((pa->lvl_pptt - pb->lvl_pptt)
-      * (batt_mV - pb->lvl_mV)
-      / (pa->lvl_mV - pb->lvl_mV));
+  return pb->lvl_pptt + ((pa->lvl_pptt - pb->lvl_pptt) * (batt_mV - pb->lvl_mV) / (pa->lvl_mV - pb->lvl_mV));
 }

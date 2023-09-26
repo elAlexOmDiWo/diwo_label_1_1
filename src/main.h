@@ -19,7 +19,12 @@
 #define ACC_SHOCK_THRESHOLD 40 // м—^2
 #define ACC_SHOCK_DURATION 3
 
+#define __ENABLE_LED__  1
+#define __ENABLE_BUTTON__ 1
+#define __ENABLE_ACC__  0
+#define __ENABLE_BLE__ 0
 #define __ENABLE_WDT__ 0
+#define __ENABLE_NFC__  0
 #define __SEGGER_FORMAT 1
 #define ODR_VALUE 100
 #define DEFAULT_ADV_PERIOD_S 1 // ѕериод отсылки рекламы по умолчанию

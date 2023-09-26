@@ -27,7 +27,12 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #include "main.h"
 #include "settings.h"
 
-//#include "lis2dh.h"
+#include <nrfx.h>
+#include <hal/nrf_gpio.h>
+#include <hal/nrf_power.h>
+#if !NRF_POWER_HAS_RESETREAS
+#include <hal/nrf_reset.h>
+#endif
 
 #ifndef FW_MAJOR
 #define FW_MAJOR    1
@@ -38,7 +43,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #endif
 
 #ifndef FW_PATCH
-#define FW_PATCH    1
+#define FW_PATCH    2
 #endif
 
 #define FW_VER      FW_PATCH + FW_MINOR * 100 + FW_MAJOR * 10000
@@ -64,8 +69,6 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-
-
 #define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
 #define ACC_FREEFALL_THRESHOLD            7   //ff_thrs_7           // Порог события free-fall ( 0 - 7 )
 #define MAX_SHOCK_TIME                    255                 // Максимальное время удержания события удара ( сек )
@@ -84,26 +87,13 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define SELF_TEST_MESS( MODULE, STATUS )
 #endif
 
-const char* BOARD_NAME = __BOARD_NAME__;
-  
-//struct lis2dh_data *lis2dh;  
-  
-uint8_t reg[64];
+const char* BOARD_NAME = __BOARD_NAME__; 
 
 typedef struct {
   int last_shock;
   int last_fall;  
   bt_addr_le_t addr;
 } app_var_s;
-
-///** События приложения */
-//typedef enum {
-//  evNone  = 0,
-//  evTimer,
-//  evIrqHi,
-//  evIrqLo,
-//  evButton,  
-//} events_e;
 
 app_settings_s app_settings = {
   .adv_period = DEFAULT_ADV_PERIOD_S,
@@ -135,8 +125,6 @@ static const struct bt_data ad[] = {
   BT_DATA( BT_DATA_MANUFACTURER_DATA, &adv_data, sizeof( adv_data ) ),
 };
 
-//static const struct device *acc_lis2 = NULL;
-
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
 
@@ -157,121 +145,54 @@ void adv_timer_exp( struct k_timer *timer_id ) {
   k_msgq_put( &qevent, &event, K_NO_WAIT );
 }
 
-//#if 0
-
-//#endif
-
-///** Прерывание по превышению уровня 
-//*/
-//void lis12dw_trigger_handler( const struct device *dev, const struct sensor_trigger *trig ) {
-//  if( trig->type == SENSOR_TRIG_THRESHOLD ) {
-//    uint8_t event = evIrqHi;
-//    k_msgq_put( &qevent, &event, K_NO_WAIT );     
-//  }
-//  else if( trig->type == SENSOR_TRIG_FREEFALL ) {
-//    uint8_t event = evIrqLo;
-//    k_msgq_put( &qevent, &event, K_NO_WAIT );       
-//  }
-//  else if( trig->type == SENSOR_TRIG_DELTA ) {
-//    uint8_t event = evIrqHi;
-//    k_msgq_put( &qevent, &event, K_NO_WAIT );      
-//  }
-//}
-//
-//void lis12dw_trigger_freefall_handler( const struct device *dev, const struct sensor_trigger *trig ) {
-//  uint8_t event = evIrqLo;
-//  k_msgq_put( &qevent, &event, K_NO_WAIT );  
-//}
-
-//int read_regs( struct lis2dh_data *lis2dh, void* data, int len ) {
-//  uint8_t* p = data;
-//  for( int i = 0; i < len; i++ ) {
-//    if( 0 != lis2dh->hw_tf->read_reg( acc_lis2, i, p++ )) return -1;
-//  }
-//  return 0;
-//}
-
 void main( void ) {
-  int err;
-
+  
 #if ( __SEGGER_FORMAT == 1 )  
   LOG_PRINTK( RTT_CTRL_CLEAR );
   LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
 #endif
 
+  print_reset_reason();  
+  
   LOG_PRINTK( "\r----------\r");
   LOG_PRINTK( "BOARD Name - %s\r", BOARD_NAME );
   LOG_PRINTK( "FW VERSION - %d.%d.%d\r", FW_MAJOR, FW_MINOR, FW_PATCH );
   LOG_PRINTK( "HW VERSION - %d.%d\r\r", HW_MAJOR, HW_MINOR );
-
   
   SELF_TEST_MESS( "INIT START", "OK" );
-  
+
   init_board();
 
+#if (__ENABLE_BUTTON__ == 1)
   if (true != init_button()) {
     SELF_TEST_MESS("BUTTON", "ERORR");
   }
   else {
     SELF_TEST_MESS("BUTTON", "OK");
   }
-
+#else  SELF_TEST_MESS("BUTTON", "DISABLE");#endif
+#if (__ENABLE_LED__ == 1 )  
   if (true != init_led()) {
     SELF_TEST_MESS( "LED", "ERORR" );
   }
 
   led_blinck( 100 );
+#else
+  SELF_TEST_MESS("LED", "DISABLE");
+#endif
 
+#if ( __ENABLE_ACC__ == 1 )  
   if (true != init_acc()) {
     SELF_TEST_MESS("ACC", "ERROR");
   }
   else {
     SELF_TEST_MESS("ACC", "OK");
   }
+#else
+  SELF_TEST_MESS("ACC", "DISABLE");
+#endif
 
-//  acc_lis2 = DEVICE_DT_GET_ANY(st_lis2dh);
-//  if (acc_lis2 == NULL) {
-//    SELF_TEST_MESS( "ACC", "ERROR" );
-//    while (1) {
-//      k_sleep( K_SECONDS( 1 ));
-//    }
-//  }
-  
-//  uint8_t reg_val = 0;
-//  struct lis2dh_data *lis2dh = acc_lis2->data;
-//  
-//  err = lis2dh->hw_tf->read_reg( acc_lis2, LIS2DH_REG_WAI, &reg_val );
-//  if( err < 0 ) {
-//    SELF_TEST_MESS( "ACC", "ERROR" );
-//    while( 1 ) {
-//      k_sleep( K_SECONDS( 1 ) );
-//    }
-//  }
-
-//  if( reg_val != LIS2DH_CHIP_ID ) {
-//    LOG_ERR( "Invalid chip ID: %02x\n", reg_val );
-//    SELF_TEST_MESS( "ACC", "ERROR" );
-//    while( 1 ) {
-//      k_sleep( K_SECONDS( 1 ) );
-//    }
-//  }
-  
-  SELF_TEST_MESS( "ACC", "OK" );
-  
-//  struct sensor_value sval = { 0 };
-//  
-//  sval.val1 = ODR_VALUE;
-//  sval.val2 = 0;
-//  sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &sval );
-//  
-///* Установка шкалы */  
-//  sval.val1 = ACC_FULL_SCALE;
-//  sval.val2 = 0;
-//  err = sensor_attr_set( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval ); 
-//  if (err) {
-//    SELF_TEST_MESS( "ACC SCALE", "ERROR" );
-//  }
-   
+#if (__ENABLE_BLE__ == 1 )  
   /* Initialize the Bluetooth Subsystem */
   err = bt_enable( NULL );
   if (err) {
@@ -281,27 +202,37 @@ void main( void ) {
     }
   }
   SELF_TEST_MESS( "BLE", "OK" );
+#else
+  SELF_TEST_MESS( "BLE", "DISABLE" );  
+#endif
 
 #if ( __ENABLE_WDT__ == 1 )    
   if (true != init_wdt( 10000 )) {
     SELF_TEST_MESS( "WDT", "ERROR" );
   }
   SELF_TEST_MESS( "WDT", "OK" );
+#else
+  SELF_TEST_MESS( "WDT", "DISABLE" );
 #endif
   
   k_timer_init( &adv_timer, adv_timer_exp, NULL );
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
 
+#if ( __ENABLE_NFC__ == 1 ) 
   if (0 != init_nfc()) {
     SELF_TEST_MESS( "NFC", "ERROR" );
   }
   else {
     SELF_TEST_MESS( "NFC", "OK" );
   }
+#else  SELF_TEST_MESS( "NFC", "DISABLE" );#endif 
   
   SELF_TEST_MESS( "APP START", "OK" );   
  
   print_device_info();  
+  
+	nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
+	nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);  
   
   while (1) {
     uint8_t event = 0;
@@ -309,17 +240,18 @@ void main( void ) {
       switch (event) {
         case evTimer : {
           static int batt_counter = 0;
+#if (__ENABLE_BLE__ == 1)          
           err = bt_le_adv_stop();
-#ifdef __DEBUG__
-          if (err) {
-            LOG_ERR( "Advertising failed to stop (err %d)\n", err );
+
+          i
+      
           } 
           else {
             LOG_INF( "Advertising ok stop\n" );
-          }
-#endif       
+          }       
+#endif
           
-#ifdef __DEBUG__          
+#if (__ENABLE_LED__ == 1 )        
           led_blinck( 1 );
 #endif 
           
@@ -333,13 +265,11 @@ void main( void ) {
             adv_data.bat = get_batt( adv_data.temp );
             batt_counter = BATT_READ_DELAY;
           }
-          
-//          lis2dh->hw_tf->read_reg( acc_lis2, 0x29, &adv_data.x );
-//          lis2dh->hw_tf->read_reg( acc_lis2, 0x2b, &adv_data.y );
-//          lis2dh->hw_tf->read_reg( acc_lis2, 0x2d, &adv_data.z );
-
+#if ( __ENABLE_ACC__ == 1 )
           read_adv_acc_data(&adv_data);
-
+#else
+          adv_data.x = adv_data.y = adv_data.z = 0;
+#endif
           if (0 != app_vars.last_shock) {
             app_vars.last_shock += app_settings.adv_period;
             if (app_vars.last_shock > MAX_SHOCK_TIME) {
@@ -358,17 +288,15 @@ void main( void ) {
           }
           
           adv_data.counter++;
-          
+#if (__ENABLE_BLE__ == 1)
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
-#if ( __DEBUG__ == 1 )
-          LOG_PRINTK( "\rSend advertisment.\r" );
-          LOG_PRINTK( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-          LOG_PRINTK( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );     
-          LOG_PRINTK( "fall - %d\r", adv_data.fall );     
-          LOG_PRINTK( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );
-#endif          
+#endif
+          LOG_DBG( "\rSend advertisment.\r" );
+          LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+          LOG_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
+          LOG_DBG( "fall - %d\r", adv_data.fall );
+          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );         
           break;          
-          
         }
         case evIrqHi : {
 // Обработчик события по превышению
@@ -381,15 +309,14 @@ void main( void ) {
 #define SHOCK_MUL                     8
           
           app_vars.last_shock = 1;
-          int temp[3] = { 0 };
+          int temp[3] = {0};
           int result = 0;
           int8_t val8 = 0;
         
           struct sensor_value val[3] = { 0 };
-//          sensor_sample_fetch( acc_lis2 );
-//          sensor_channel_get( acc_lis2, SENSOR_CHAN_ACCEL_XYZ, val );
+#if ( __ENABLE_ACC__ == 1 )          
           read_sensor_value(val);
-
+#endif
           temp[0] = sensor_value_to_double( &val[0] ) * SHOCK_MUL;
           temp[0] *= temp[0];
           
@@ -410,25 +337,19 @@ void main( void ) {
             adv_data.shock_value = val8;
           }
 
-#if (__DEBUG__ == 1)
-          LOG_PRINTK( "Threshold IRQ.\r" );
-          LOG_PRINTK( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
-          LOG_PRINTK( "value - %d\r", result );
-          LOG_PRINTK( "val - %d\r\n", val8 );
-#endif        
+          LOG_DBG( "Threshold IRQ.\r" );
+          LOG_DBG( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
+          LOG_DBG( "value - %d\r", result );
+          LOG_DBG( "val - %d\r\n", val8 );        
           break;
         }
         case evIrqLo : {
           app_vars.last_fall = 1;
-#if (__DEBUG__ == 1)
-          LOG_PRINTK( "FreeFall IRQ.\r" );        
-#endif        
+          LOG_DBG( "FreeFall IRQ.\r" );               
           break;
         }
         case evButton: {
-#if (__DEBUG__ == 1)
-          LOG_PRINTK("Button event\r");
-#endif
+          LOG_DBG("Button event\r");
           break;
         }
       }

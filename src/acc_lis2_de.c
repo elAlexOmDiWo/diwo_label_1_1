@@ -48,21 +48,12 @@ int init_acc( void ) {
   struct lis2dh_data *lis2dh = acc_lis2->data;
 
   err = lis2dh->hw_tf->read_reg(acc_lis2, LIS2DH_REG_WAI, &reg_val);
-  if (err < 0) {
+  if (err != 0) {
     return -1;
-    //    SELF_TEST_MESS("ACC", "ERROR");
-    //    while (1) {
-    //      k_sleep(K_SECONDS(1));
-    //    }
   }
 
   if (reg_val != LIS2DH_CHIP_ID) {
     return -1;
-    //    LOG_ERR("Invalid chip ID: %02x\n", reg_val);
-    //    SELF_TEST_MESS("ACC", "ERROR");
-    //    while (1) {
-    //      k_sleep(K_SECONDS(1));
-    //    }
   }
 
   struct sensor_value sval = {0};
@@ -75,8 +66,7 @@ int init_acc( void ) {
   sval.val1 = ACC_FULL_SCALE;
   sval.val2 = 0;
   err = sensor_attr_set(acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &sval);
-  if (err) {
-//    SELF_TEST_MESS("ACC SCALE", "ERROR");
+  if (err != 0 ) {
   }  
   
   return 0;

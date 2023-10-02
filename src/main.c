@@ -13,7 +13,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 
-#define LOG_LEVEL_MAIN      LOG_LEVEL_INF
+#define LOG_LEVEL_MAIN      LOG_LEVEL_DBG
 
 LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
@@ -125,11 +125,12 @@ adv_data_s adv_data = {
 
 struct bt_le_ext_adv *adv = NULL;
 
+//#if (__ENABLE_BLE__ == 1)
 static const struct bt_data ad[] = {
   BT_DATA_BYTES( BT_DATA_FLAGS, BT_LE_AD_NO_BREDR ),
   BT_DATA( BT_DATA_MANUFACTURER_DATA, &adv_data, sizeof( adv_data ) ),
 };
-
+//#endif
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
 
@@ -151,18 +152,19 @@ void adv_timer_exp( struct k_timer *timer_id ) {
 }
 
 void main( void ) {
+  int err = 0;
   
-#if ( __SEGGER_FORMAT == 1 )  
+#if ( __SEGGER_FORMAT == 1 )
   LOG_PRINTK( RTT_CTRL_CLEAR );
   LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
 #endif
 
 //  print_reset_reason();  
   
-  LOG_PRINTK( "\r----------\r");
-  LOG_PRINTK( "BOARD Name - %s\r", BOARD_NAME );
-  LOG_PRINTK( "FW VERSION - %d.%d.%d\r", FW_MAJOR, FW_MINOR, FW_PATCH );
-  LOG_PRINTK( "HW VERSION - %d.%d\r\r", HW_MAJOR, HW_MINOR );
+//  LOG_PRINTK( "\r----------\r");
+//  LOG_PRINTK( "BOARD Name - %s\r", BOARD_NAME );
+//  LOG_PRINTK( "FW VERSION - %d.%d.%d\r", FW_MAJOR, FW_MINOR, FW_PATCH );
+//  LOG_PRINTK( "HW VERSION - %d.%d\r\r", HW_MAJOR, HW_MINOR );
   
   SELF_TEST_MESS( "INIT START", "OK" );
 
@@ -175,7 +177,10 @@ void main( void ) {
   else {
     SELF_TEST_MESS("BUTTON", "OK");
   }
-#else  SELF_TEST_MESS("BUTTON", "DISABLE");#endif
+#else
+  SELF_TEST_MESS("BUTTON", "DISABLE");
+#endif
+
 #if (__ENABLE_LED__ == 1 )  
   if (true != init_led()) {
     SELF_TEST_MESS( "LED", "ERORR" );
@@ -198,31 +203,17 @@ void main( void ) {
 #endif
 
 #if (__ENABLE_BLE__ == 1 )  
-  /* Initialize the Bluetooth Subsystem */
-  err = bt_enable( NULL );
-  if (err) {
-    SELF_TEST_MESS( "BLE", "ERROR" );
-    while (1) {
-      k_sleep( K_SECONDS( 1 ));      
-    }
+  /* Initialize theBuetooth Subsstm */
+  if ( 0 != bt_enable( NULL )) {
+      SELF_TEST_MESS( "BLE", "ERROR" );
   }
-  SELF_TEST_MESS( "BLE", "OK" );
+  else {
+    SELF_TEST_MESS( "BLE", "OK" );
+  }
 #else
   SELF_TEST_MESS( "BLE", "DISABLE" );  
 #endif
-
-#if ( __ENABLE_WDT__ == 1 )    
-  if (true != init_wdt( 10000 )) {
-    SELF_TEST_MESS( "WDT", "ERROR" );
-  }
-  SELF_TEST_MESS( "WDT", "OK" );
-#else
-  SELF_TEST_MESS( "WDT", "DISABLE" );
-#endif
   
-  k_timer_init( &adv_timer, adv_timer_exp, NULL );
- // k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
-
 #if ( __ENABLE_NFC__ == 1 ) 
   if (0 != init_nfc()) {
     SELF_TEST_MESS( "NFC", "ERROR" );
@@ -230,32 +221,74 @@ void main( void ) {
   else {
     SELF_TEST_MESS( "NFC", "OK" );
   }
-#else  SELF_TEST_MESS( "NFC", "DISABLE" );#endif 
+#else
+  SELF_TEST_MESS( "NFC", "DISABLE" );
+#endif 
   
-  SELF_TEST_MESS( "APP START", "OK" );   
- 
-  print_device_info();  
+  SELF_TEST_MESS( "APP START", "OK" );
+
+#if (__ENABLE_BLE__ == 1)
+  print_device_info();
+#endif
+  k_sleep(K_SECONDS(1));
+
+//  k_sched_lock();
+//  nrf_gpio_cfg_input(nrf_dt_gpios_to_psel(dt_alias(sw0), gpios), nrf_gpio_pin_pullup);
+//  nrf_gpio_cfg_sense_set(nrf_dt_gpios_to_psel(dt_alias(sw0), gpios), nrf_gpio_pin_sense_low);  
+//  pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+//  const struct pm_state_info si = {PM_STATE_SOFT_OFF, 0, 0};
+//
+//  pm_state_force(0, &si);
+//  k_sleep(K_SECONDS(1));
+  
+//  pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+//  pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
+//  k_sleep(K_MSEC(10000));
+  
+//  printk("System off failed printk\n");
+//  LOG_ERR("System off failed logerr\n");  
+//  LOG_DBG("System off failed logdbg\n");  
+//  LOG_PRINTK("System off failed logprintk\n");
   
   uint32_t reas = get_reset_reason();
   if( reas & NRF_POWER_RESETREAS_OFF_MASK) {
+    LOG_DBG("System resume\n");
     init_button();
   }
   else {
-#if ( __ENABLE_DEEP_SLEEP__ == 1)    
-	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
-	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
+    if (IS_ENABLED(CONFIG_APP_RETENTION)) {
+      LOG_ERR("CONFIG_APP_RETENTION\n");
+    }
+#if (__ENABLE_DEEP_SLEEP__ == 1)    
+////	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
+////	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
+////    sys_poweroff();
+    LOG_DBG("System off\n");
+    k_sleep(K_MSEC(1000));
+    pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
     pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
-    k_sleep(K_SECONDS(5)); 
-#else  SELF_TEST_MESS( "DEEP SLEEP", "DISABLE" );    
-#endif    
+    k_sleep(K_MSEC(1));
+    LOG_ERR("System off failed\n");
+#else
+  SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
+#endif
   }
+
+  k_timer_init(&adv_timer, adv_timer_exp, NULL);
+  k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
+
+#if (__ENABLE_WDT__ == 1)
+  if (true != init_wdt(10000)) {
+    SELF_TEST_MESS("WDT", "ERROR");
+  }
+  SELF_TEST_MESS("WDT", "OK");
+#else
+  SELF_TEST_MESS("WDT", "DISABLE");
+#endif  
   
   while (1) {
     uint8_t event = 0;
     if (0 == k_msgq_get( &qevent, &event, K_FOREVER )) {
-
-      printk( "Event - %d\r", event );
-      
       switch (event) {
         case evTimer : {
           static int batt_counter = 0;
@@ -310,11 +343,11 @@ void main( void ) {
 #if (__ENABLE_BLE__ == 1)
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 #endif
-          LOG_DBG( "\rSend advertisment.\r" );
-          LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-          LOG_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
-          LOG_DBG( "fall - %d\r", adv_data.fall );
-          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );         
+//          LOG_DBG( "\rSend advertisment.\r" );
+//          LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+//          LOG_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
+//          LOG_DBG( "fall - %d\r", adv_data.fall );
+//          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );         
           break;          
         }
         case evIrqHi : {
@@ -356,19 +389,29 @@ void main( void ) {
             adv_data.shock_value = val8;
           }
 
-          LOG_DBG( "Threshold IRQ.\r" );
-          LOG_DBG( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
-          LOG_DBG( "value - %d\r", result );
-          LOG_DBG( "val - %d\r\n", val8 );        
+//          LOG_DBG( "Threshold IRQ.\r" );
+//          LOG_DBG( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
+//          LOG_DBG( "value - %d\r", result );
+//          LOG_DBG( "val - %d\r\n", val8 );        
           break;
         }
         case evIrqLo : {
           app_vars.last_fall = 1;
-          LOG_DBG( "FreeFall IRQ.\r" );               
+//          LOG_DBG( "FreeFall IRQ.\r" );               
           break;
         }
         case evButton: {
-          LOG_DBG("Button event\r");
+          static int counter = 0;
+
+          int value = get_button_level();
+          if (value == 1) {
+ //           LOG_DBG("Key press - %d\r", counter);
+          }
+          else {
+ //           LOG_DBG("Key release - %d\r", counter);
+          }
+          counter++;
+          led_blinck(1000);
           break;
         }
       }

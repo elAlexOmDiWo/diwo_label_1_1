@@ -12,13 +12,13 @@
 		};
 	};
 
-//	buttons {
-//		compatible = "gpio-keys";
-//		button0: button_0 {
-//			gpios = <&gpio0 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-//			label = "Push button switch 0";
-//		};
-//	};
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button switch 0";
+		};
+	};
 
 };
 
@@ -56,7 +56,7 @@
 	};
 };
 
-
+/*
 &uart0 {
 	compatible = "nordic,nrf-uarte";
 
@@ -64,6 +64,7 @@
 	pinctrl-1 = <&uart0_sleep>;
 	pinctrl-names = "default", "sleep";
 };
+*/
 
 &spi0 {
 	compatible = "nordic,nrf-spi";

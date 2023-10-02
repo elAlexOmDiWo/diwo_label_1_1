@@ -3,7 +3,7 @@
 #include "diwo_label.h"
 
 #define __DEBUG__ 1
-#define __ENABLE_SELF_TEST_MESS__ 1
+#define __ENABLE_SELF_TEST_MESS__ 0
 
 #if (__DEBUG__ != 1)
 #define ACC_SHOCK_THRESHOLD 60 // м—^2
@@ -20,13 +20,13 @@
 #define ACC_SHOCK_DURATION 3
 
 #define __ENABLE_LED__  1
-#define __ENABLE_BUTTON__ 1
+#define __ENABLE_BUTTON__ 0
 #define __ENABLE_ACC__  0
 #define __ENABLE_BLE__ 0
 #define __ENABLE_WDT__ 0
 #define __ENABLE_NFC__  0
-#define __ENABLE_DEEP_SLEEP__ 0
-#define __SEGGER_FORMAT 1
+#define __ENABLE_DEEP_SLEEP__ 1
+#define __SEGGER_FORMAT 0
 #define ODR_VALUE 100
 #define DEFAULT_ADV_PERIOD_S 1 // ѕериод отсылки рекламы по умолчанию
 #define ACC_FULL_SCALE 20      // м—^2

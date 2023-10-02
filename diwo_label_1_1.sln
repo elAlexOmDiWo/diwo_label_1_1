@@ -4,6 +4,12 @@ VisualStudioVersion = 16.0.31605.320
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{803FD0C6-D64E-4E16-9DC3-1DAEC859A3D2}") = "diwo_label_1_1", "diwo_label_1_1.vgdbproj", "{E0B23510-E3D4-429C-B672-A017BBCD04AA}"
 EndProject
+Project("{803FD0C6-D64E-4E16-9DC3-1DAEC859A3D2}") = "deep_sleep1", "..\DeepSleep\deep_sleep1\deep_sleep1.vgdbproj", "{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}"
+EndProject
+Project("{803FD0C6-D64E-4E16-9DC3-1DAEC859A3D2}") = "deep_sleep", "..\DeepSleep\deep_sleep\deep_sleep.vgdbproj", "{D69C48C5-AB7E-420A-81F8-470666B154B6}"
+EndProject
+Project("{803FD0C6-D64E-4E16-9DC3-1DAEC859A3D2}") = "system_off", "..\system_off\system_off.vgdbproj", "{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|diwo_label_ble_1_1 = Debug|diwo_label_ble_1_1
@@ -44,6 +50,52 @@ Global
 		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf52dk_nrf52832.Build.0 = Release|diwo_label_ble_1_1
 		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Release|diwo_label_ble_1_1
 		{E0B23510-E3D4-429C-B672-A017BBCD04AA}.Release|nrf5340dk_nrf5340_cpuapp.Build.0 = Release|diwo_label_ble_1_1
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|diwo_label_ble_1_1.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|diwo_label_ble_nfc_1_0.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|diwo_label_nfc_1_0.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|nrf52840dk_nrf52840.ActiveCfg = Debug|nrf52dk_nrf52832
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|nrf52dk_nrf52832.ActiveCfg = Debug|nrf52dk_nrf52832
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|nrf52dk_nrf52832.Build.0 = Debug|nrf52dk_nrf52832
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Debug|nrf5340dk_nrf5340_cpuapp.Build.0 = Debug|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|diwo_label_ble_1_1.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|diwo_label_ble_nfc_1_0.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|diwo_label_nfc_1_0.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|nrf52840dk_nrf52840.ActiveCfg = Release|nrf52dk_nrf52832
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|nrf52dk_nrf52832.ActiveCfg = Release|nrf52dk_nrf52832
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|nrf52dk_nrf52832.Build.0 = Release|nrf52dk_nrf52832
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{1386E5D6-DF17-4A57-9AA2-0BB687F02DBA}.Release|nrf5340dk_nrf5340_cpuapp.Build.0 = Release|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|diwo_label_ble_1_1.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|diwo_label_ble_nfc_1_0.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|diwo_label_nfc_1_0.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|nrf52840dk_nrf52840.ActiveCfg = Debug|nrf52dk_nrf52832
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|nrf52dk_nrf52832.ActiveCfg = Debug|nrf52dk_nrf52832
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|nrf52dk_nrf52832.Build.0 = Debug|nrf52dk_nrf52832
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Debug|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Debug|nrf5340dk_nrf5340_cpuapp.Build.0 = Debug|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|diwo_label_ble_1_1.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|diwo_label_ble_nfc_1_0.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|diwo_label_nfc_1_0.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|nrf52840dk_nrf52840.ActiveCfg = Release|nrf52dk_nrf52832
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|nrf52dk_nrf52832.ActiveCfg = Release|nrf52dk_nrf52832
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|nrf52dk_nrf52832.Build.0 = Release|nrf52dk_nrf52832
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Release|nrf5340dk_nrf5340_cpuapp
+		{D69C48C5-AB7E-420A-81F8-470666B154B6}.Release|nrf5340dk_nrf5340_cpuapp.Build.0 = Release|nrf5340dk_nrf5340_cpuapp
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Debug|diwo_label_ble_1_1.ActiveCfg = Debug|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Debug|diwo_label_ble_nfc_1_0.ActiveCfg = Debug|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Debug|diwo_label_nfc_1_0.ActiveCfg = Debug|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Debug|nrf52840dk_nrf52840.ActiveCfg = Debug|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Debug|nrf52dk_nrf52832.ActiveCfg = Debug|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Debug|nrf52dk_nrf52832.Build.0 = Debug|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Debug|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Debug|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Release|diwo_label_ble_1_1.ActiveCfg = Release|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Release|diwo_label_ble_nfc_1_0.ActiveCfg = Release|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Release|diwo_label_nfc_1_0.ActiveCfg = Release|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Release|nrf52840dk_nrf52840.ActiveCfg = Release|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Release|nrf52dk_nrf52832.ActiveCfg = Release|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Release|nrf52dk_nrf52832.Build.0 = Release|nrf52dk_nrf52832
+		{24BD6EC2-6D4F-47DD-A483-4A3A28480C64}.Release|nrf5340dk_nrf5340_cpuapp.ActiveCfg = Release|nrf52dk_nrf52832
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

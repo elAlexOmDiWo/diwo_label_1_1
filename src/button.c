@@ -7,13 +7,12 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/util.h>
-//#include <zephyr/sys/printk.h>
 #include <zephyr/logging/log.h>
 #include <inttypes.h>
 
 #include "main.h"
 
-#define LOG_LEVEL_BUTTON LOG_LEVEL_DBG
+#define LOG_LEVEL_BUTTON LOG_LEVEL_INF
 
 LOG_MODULE_REGISTER(button, LOG_LEVEL_BUTTON);
 
@@ -47,7 +46,7 @@ bool init_button( void ) {
 		return false;
 	}
 
-	ret = gpio_pin_interrupt_configure_dt( &button, GPIO_INT_EDGE_TO_ACTIVE );
+  ret = gpio_pin_interrupt_configure_dt(&button, GPIO_INT_EDGE_BOTH );
 	if (ret != 0) {
     LOG_ERR( "Error %d: failed to configure interrupt on %s pin %d\n", ret, button.port->name, button.pin );
 		return false;
@@ -63,4 +62,8 @@ bool init_button( void ) {
 
   LOG_DBG("Set up button at %s pin %d\n", button.port->name, button.pin);
 	return true;
+}
+
+int get_button_level(void) {
+  return gpio_pin_get_dt(&button);
 }

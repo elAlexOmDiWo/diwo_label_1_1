@@ -5,7 +5,6 @@
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
-//#include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
 
@@ -92,7 +91,13 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define SELF_TEST_MESS( MODULE, STATUS )
 #endif
 
-const char* BOARD_NAME = __BOARD_NAME__; 
+const char* BOARD_NAME = __BOARD_NAME__;
+
+typedef enum {
+  lmSleep,
+  lmBeacon,
+  lmDevice
+} label_mode_e;
 
 typedef struct {
   int last_shock;
@@ -125,12 +130,13 @@ adv_data_s adv_data = {
 
 struct bt_le_ext_adv *adv = NULL;
 
-//#if (__ENABLE_BLE__ == 1)
+#if (__ENABLE_BLE__ == 1)
 static const struct bt_data ad[] = {
   BT_DATA_BYTES( BT_DATA_FLAGS, BT_LE_AD_NO_BREDR ),
   BT_DATA( BT_DATA_MANUFACTURER_DATA, &adv_data, sizeof( adv_data ) ),
 };
-//#endif
+#endif
+
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
 
@@ -158,13 +164,6 @@ void main( void ) {
   LOG_PRINTK( RTT_CTRL_CLEAR );
   LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
 #endif
-
-//  print_reset_reason();  
-  
-//  LOG_PRINTK( "\r----------\r");
-//  LOG_PRINTK( "BOARD Name - %s\r", BOARD_NAME );
-//  LOG_PRINTK( "FW VERSION - %d.%d.%d\r", FW_MAJOR, FW_MINOR, FW_PATCH );
-//  LOG_PRINTK( "HW VERSION - %d.%d\r\r", HW_MAJOR, HW_MINOR );
   
   SELF_TEST_MESS( "INIT START", "OK" );
 
@@ -229,46 +228,31 @@ void main( void ) {
 
 #if (__ENABLE_BLE__ == 1)
   print_device_info();
-#endif
+#endif
+
   k_sleep(K_SECONDS(1));
 
-//  k_sched_lock();
-//  nrf_gpio_cfg_input(nrf_dt_gpios_to_psel(dt_alias(sw0), gpios), nrf_gpio_pin_pullup);
-//  nrf_gpio_cfg_sense_set(nrf_dt_gpios_to_psel(dt_alias(sw0), gpios), nrf_gpio_pin_sense_low);  
-//  pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-//  const struct pm_state_info si = {PM_STATE_SOFT_OFF, 0, 0};
-//
-//  pm_state_force(0, &si);
-//  k_sleep(K_SECONDS(1));
-  
-//  pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-//  pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
-//  k_sleep(K_MSEC(10000));
-  
-//  printk("System off failed printk\n");
-//  LOG_ERR("System off failed logerr\n");  
-//  LOG_DBG("System off failed logdbg\n");  
-//  LOG_PRINTK("System off failed logprintk\n");
-  
   uint32_t reas = get_reset_reason();
   if( reas & NRF_POWER_RESETREAS_OFF_MASK) {
     LOG_DBG("System resume\n");
+    printk("System resume printk\n");
+#if (__ENABLE_BUTTON__ == 1)    
     init_button();
+#endif
   }
   else {
     if (IS_ENABLED(CONFIG_APP_RETENTION)) {
       LOG_ERR("CONFIG_APP_RETENTION\n");
     }
 #if (__ENABLE_DEEP_SLEEP__ == 1)    
-////	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
-////	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
-////    sys_poweroff();
+	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
+	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
+
     LOG_DBG("System off\n");
     k_sleep(K_MSEC(1000));
     pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
     pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
     k_sleep(K_MSEC(1));
-    LOG_ERR("System off failed\n");
 #else
   SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
 #endif
@@ -343,11 +327,11 @@ void main( void ) {
 #if (__ENABLE_BLE__ == 1)
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 #endif
-//          LOG_DBG( "\rSend advertisment.\r" );
-//          LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-//          LOG_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
-//          LOG_DBG( "fall - %d\r", adv_data.fall );
-//          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );         
+          LOG_DBG( "\rSend advertisment.\r" );
+          LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+          LOG_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
+          LOG_DBG( "fall - %d\r", adv_data.fall );
+          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );         
           break;          
         }
         case evIrqHi : {
@@ -389,15 +373,15 @@ void main( void ) {
             adv_data.shock_value = val8;
           }
 
-//          LOG_DBG( "Threshold IRQ.\r" );
-//          LOG_DBG( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
-//          LOG_DBG( "value - %d\r", result );
-//          LOG_DBG( "val - %d\r\n", val8 );        
+          LOG_DBG( "Threshold IRQ.\r" );
+          LOG_DBG( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
+          LOG_DBG( "value - %d\r", result );
+          LOG_DBG( "val - %d\r\n", val8 );        
           break;
         }
         case evIrqLo : {
           app_vars.last_fall = 1;
-//          LOG_DBG( "FreeFall IRQ.\r" );               
+          LOG_DBG( "FreeFall IRQ.\r" );               
           break;
         }
         case evButton: {
@@ -405,10 +389,11 @@ void main( void ) {
 
           int value = get_button_level();
           if (value == 1) {
- //           LOG_DBG("Key press - %d\r", counter);
+            LOG_DBG("Key press - %d\r", counter);
           }
           else {
- //           LOG_DBG("Key release - %d\r", counter);
+            LOG_DBG("Key release - %d\r", counter);
+            
           }
           counter++;
           led_blinck(1000);

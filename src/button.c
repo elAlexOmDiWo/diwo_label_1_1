@@ -14,6 +14,8 @@
 
 #define LOG_LEVEL_BUTTON LOG_LEVEL_INF
 
+#define DEBOUNCE_INTERVAL				10
+
 LOG_MODULE_REGISTER(button, LOG_LEVEL_BUTTON);
 
 /*
@@ -28,8 +30,42 @@ LOG_MODULE_REGISTER(button, LOG_LEVEL_BUTTON);
 static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR( SW0_NODE, gpios, { 0 });
 static struct gpio_callback button_cb_data;
 
+static struct k_work_delayable button_pressed;
+
 static void button_cb(const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins) {
-  send_event(evButton );
+  k_work_reschedule(&button_pressed, K_MSEC(DEBOUNCE_INTERVAL));
+//  send_event(evButton );
+}
+
+static void button_pressed_fn(struct k_work *work) {
+  send_event(evButton);
+//  int err = callback_ctrl(false);
+//
+//  if (err) {
+//    LOG_ERR("Cannot disable callbacks");
+//    module_set_state(MODULE_STATE_ERROR);
+//    return;
+//  }
+//
+//  switch (state) {
+//  case STATE_IDLE:
+//    if (IS_ENABLED(CONFIG_CAF_BUTTONS_PM_EVENTS)) {
+//      EVENT_SUBMIT(new_wake_up_event());
+//    }
+//    break;
+//
+//  case STATE_ACTIVE:
+//    state = STATE_SCANNING;
+//    k_work_reschedule(&matrix_scan, K_MSEC(DEBOUNCE_INTERVAL));
+//    break;
+//
+//  case STATE_SCANNING:
+//  case STATE_SUSPENDING:
+//  default:
+//    /* Invalid state */
+//    __ASSERT_NO_MSG(false);
+//    break;
+//  }
 }
 
 bool init_button( void ) {
@@ -52,6 +88,7 @@ bool init_button( void ) {
 		return false;
 	}
 
+  k_work_init_delayable(&button_pressed, button_pressed_fn);
   gpio_init_callback(&button_cb_data, button_cb, BIT( button.pin ));
   
 	ret = gpio_add_callback(button.port, &button_cb_data);

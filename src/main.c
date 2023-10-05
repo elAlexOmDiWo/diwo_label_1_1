@@ -94,6 +94,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 const char* BOARD_NAME = __BOARD_NAME__;
 
 typedef enum {
+  lmInit,
   lmSleep,
   lmBeacon,
   lmDevice
@@ -113,6 +114,8 @@ app_settings_s app_settings = {
 };
 
 app_var_s app_vars = { 0 };
+
+label_mode_e label_mode = lmInit;
 
 adv_data_s adv_data = { 
   .man_id = DIWO_ID,
@@ -156,6 +159,8 @@ void adv_timer_exp( struct k_timer *timer_id ) {
   uint8_t event = evTimer;
   k_msgq_put( &qevent, &event, K_NO_WAIT );
 }
+
+int goto_deep_sleep(void);
 
 void main( void ) {
   int err = 0;
@@ -236,28 +241,30 @@ void main( void ) {
   if( reas & NRF_POWER_RESETREAS_OFF_MASK) {
     LOG_DBG("System resume\n");
     printk("System resume printk\n");
-#if (__ENABLE_BUTTON__ == 1)    
-    init_button();
-#endif
   }
   else {
     if (IS_ENABLED(CONFIG_APP_RETENTION)) {
       LOG_ERR("CONFIG_APP_RETENTION\n");
     }
-#if (__ENABLE_DEEP_SLEEP__ == 1)    
-	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
-	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
-
-    LOG_DBG("System off\n");
-    k_sleep(K_MSEC(1000));
-    pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-    pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
-    k_sleep(K_MSEC(1));
-#else
-  SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
-#endif
+    goto_deep_sleep();
+//#if (__ENABLE_DEEP_SLEEP__ == 1)    
+//	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
+//	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
+//
+//    LOG_DBG("System off\n");
+//    k_sleep(K_MSEC(1000));
+//    pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+//    pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
+//    k_sleep(K_MSEC(1));
+//#else
+//  SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
+//#endif
   }
 
+#if (__ENABLE_BUTTON__ == 1)
+  init_button();
+#endif  
+  
   k_timer_init(&adv_timer, adv_timer_exp, NULL);
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
 
@@ -268,8 +275,26 @@ void main( void ) {
   SELF_TEST_MESS("WDT", "OK");
 #else
   SELF_TEST_MESS("WDT", "DISABLE");
-#endif  
-  
+#endif
+
+  label_mode = lmBeacon;
+
+  if (srPowerOff == run_device()) {
+    goto_deep_sleep();
+//#if (__ENABLE_DEEP_SLEEP__ == 1)
+//    nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
+//    nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
+//
+//    LOG_DBG("System off\n");
+//    k_sleep(K_MSEC(1000));
+//    pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+//    pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
+//    k_sleep(K_MSEC(1));
+//#else
+//    SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
+//#endif    
+  }
+
   while (1) {
     uint8_t event = 0;
     if (0 == k_msgq_get( &qevent, &event, K_FOREVER )) {
@@ -326,12 +351,13 @@ void main( void ) {
           adv_data.counter++;
 #if (__ENABLE_BLE__ == 1)
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
-#endif
+
           LOG_DBG( "\rSend advertisment.\r" );
           LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
           LOG_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
           LOG_DBG( "fall - %d\r", adv_data.fall );
-          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );         
+          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );
+#endif          
           break;          
         }
         case evIrqHi : {
@@ -372,11 +398,12 @@ void main( void ) {
           if (adv_data.shock_value < val8) {
             adv_data.shock_value = val8;
           }
-
+#if (__ENABLE_ACC__ == 1)
           LOG_DBG( "Threshold IRQ.\r" );
           LOG_DBG( "x - %d, y - %d, z - %d\r", temp[0], temp[1], temp[2] );
           LOG_DBG( "value - %d\r", result );
-          LOG_DBG( "val - %d\r\n", val8 );        
+          LOG_DBG( "val - %d\r\n", val8 );  
+#endif          
           break;
         }
         case evIrqLo : {
@@ -385,18 +412,34 @@ void main( void ) {
           break;
         }
         case evButton: {
-          static int counter = 0;
-
-          int value = get_button_level();
-          if (value == 1) {
-            LOG_DBG("Key press - %d\r", counter);
+          switch (label_mode ) {
+            case lmBeacon: {
+              static int counter = 0;
+              int value = get_button_level();
+              if (value == 1) {
+                LOG_DBG("Key press - %d\r", counter);
+              }
+              else {
+                LOG_DBG("Key release - %d\r", counter);
+              }              
+              break;
+            }
+            case lmDevice: {
+              break;
+            }              
           }
-          else {
-            LOG_DBG("Key release - %d\r", counter);
-            
-          }
-          counter++;
-          led_blinck(1000);
+//          
+//
+//          int value = get_button_level();
+//          if (value == 1) {
+//            LOG_DBG("Key press - %d\r", counter);
+//          }
+//          else {
+//            LOG_DBG("Key release - %d\r", counter);
+//            
+//          }
+//          counter++;
+//          led_blinck(1000);
           break;
         }
       }
@@ -445,4 +488,21 @@ void print_device_info( void ) {
 #endif
 
   LOG_PRINTK( "\n" );
+}
+
+int goto_deep_sleep(void) {
+#if (__ENABLE_DEEP_SLEEP__ == 1)
+  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
+  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
+
+  LOG_DBG("System off\n");
+  k_sleep(K_MSEC(1000));
+  pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+  pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
+  k_sleep(K_MSEC(1));
+  return 0;
+#else
+  SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
+  return -1;
+#endif
 }

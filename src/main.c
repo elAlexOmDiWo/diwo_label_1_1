@@ -12,7 +12,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 
-#define LOG_LEVEL_MAIN      LOG_LEVEL_DBG
+#define LOG_LEVEL_MAIN LOG_LEVEL_INF
 
 LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #include "diwo_label.h"
 #include "bsp.h"
 #include "wdt.h"
-#include "settings.h"
+#include "setting.h"
 #include "nfc.h"
 #include "acc.h"
 #include "power.h"
@@ -247,18 +247,6 @@ void main( void ) {
       LOG_ERR("CONFIG_APP_RETENTION\n");
     }
     goto_deep_sleep();
-//#if (__ENABLE_DEEP_SLEEP__ == 1)    
-//	  nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
-//	  nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
-//
-//    LOG_DBG("System off\n");
-//    k_sleep(K_MSEC(1000));
-//    pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-//    pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
-//    k_sleep(K_MSEC(1));
-//#else
-//  SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
-//#endif
   }
 
 #if (__ENABLE_BUTTON__ == 1)
@@ -279,22 +267,6 @@ void main( void ) {
 
   label_mode = lmBeacon;
 
-  if (srPowerOff == run_device()) {
-    goto_deep_sleep();
-//#if (__ENABLE_DEEP_SLEEP__ == 1)
-//    nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
-//    nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
-//
-//    LOG_DBG("System off\n");
-//    k_sleep(K_MSEC(1000));
-//    pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-//    pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
-//    k_sleep(K_MSEC(1));
-//#else
-//    SELF_TEST_MESS("DEEP SLEEP", "DISABLE");
-//#endif    
-  }
-
   while (1) {
     uint8_t event = 0;
     if (0 == k_msgq_get( &qevent, &event, K_FOREVER )) {
@@ -308,7 +280,7 @@ void main( void ) {
             LOG_ERR( "Advertising failed to stop (err %d)\n", err );
           } 
           else {
-            LOG_INF( "Advertising ok stop\n" );
+            LOG_DBG( "Advertising ok stop\n" );
           }       
 #endif
           
@@ -319,7 +291,7 @@ void main( void ) {
 #if ( __ENABLE_WDT__ == 1 )          
           reset_wdt();
 #endif
-          
+        
           adv_data.temp = get_temp();
           
           if ( 0 == batt_counter-- ) {
@@ -414,17 +386,25 @@ void main( void ) {
         case evButton: {
           switch (label_mode ) {
             case lmBeacon: {
+              label_mode = lmDevice;
               static int counter = 0;
               int value = get_button_level();
               if (value == 1) {
                 LOG_DBG("Key press - %d\r", counter);
+                k_timer_stop(&adv_timer );
+                err = bt_le_adv_stop();
+                if (0 != (err = run_device())) {
+                  LOG_ERR("Error run device - %d\r", err);
+                }
+                k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));
               }
               else {
                 LOG_DBG("Key release - %d\r", counter);
-              }              
+              } 
               break;
             }
             case lmDevice: {
+              label_mode = lmBeacon;
               break;
             }              
           }
@@ -440,6 +420,9 @@ void main( void ) {
 //          }
 //          counter++;
 //          led_blinck(1000);
+          break;
+        }
+        case evCmdPowerOff: {
           break;
         }
       }

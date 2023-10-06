@@ -182,7 +182,7 @@ static void connected(struct bt_conn *conn, uint8_t err) {
   }
 
   bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-  LOG_INF("Connected %s", addr);
+  LOG_DBG("Connected %s", addr);
 
 //  current_conn = bt_conn_ref(conn);
 //
@@ -194,18 +194,19 @@ static void disconnected(struct bt_conn *conn, uint8_t reason) {
 
   bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-  LOG_INF("Disconnected: %s (reason %u)", addr, reason);
+  LOG_DBG("Disconnected: %s (reason %u)", addr, reason);
 
-//  if (auth_conn) {
-//    bt_conn_unref(auth_conn);
-//    auth_conn = NULL;
-//  }
-//
-//  if (current_conn) {
-//    bt_conn_unref(current_conn);
-//    current_conn = NULL;
-//    dk_set_led_off(CON_STATUS_LED);
-//  }
+  sleep_counter = 0;
+  //  if (auth_conn) {
+  //    bt_conn_unref(auth_conn);
+  //    auth_conn = NULL;
+  //  }
+  //
+  //  if (current_conn) {
+  //    bt_conn_unref(current_conn);
+  //    current_conn = NULL;
+  //    dk_set_led_off(CON_STATUS_LED);
+  //  }
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
@@ -223,7 +224,7 @@ int run_device(void) {
 
   if (!bt_is_ready()) {
     if (0 != (err = bt_enable(NULL))) {
-      printk("Error BT Enable - %d\n", err);
+      LOG_ERR("Error BT Enable - %d\n", err);
       return err;
     }
   }
@@ -231,7 +232,7 @@ int run_device(void) {
   param.options = BT_LE_ADV_OPT_USE_NAME;
 
   if (0 != (err = (bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd))))) {
-    printk("Error BT Start - %d\n", err);
+    LOG_ERR("Error BT Start - %d\n", err);
     switch (err) {
       case ECONNREFUSED: {
         break;
@@ -241,22 +242,24 @@ int run_device(void) {
   }
 
   if (0 != (err = bt_gatt_service_register(&app_settings_svc))) {
+    LOG_ERR("Error register service - %d", err);
     return err;
   }
 
-  printk("Enter device mode\n");
+  LOG_DBG("Enter device mode\n");
   
   sleep_counter = WAITE_CONNECTION_TIME;
 
   while ( sleep_counter-- > 0 ) {
-    printk("Sleep counter - %d\n", sleep_counter);
+    LOG_DBG("Sleep counter - %d\n", sleep_counter);
     k_sleep(K_SECONDS(1));
   }
 
   if (0 != (err = bt_gatt_service_unregister(&app_settings_svc))) {
+    LOG_ERR("Error unregister service - %d", err);
     return err;
   }
-  
-  printk("Exit device mode\n" );
+
+  LOG_DBG("Exit device mode\n" );
   return 0;
 }

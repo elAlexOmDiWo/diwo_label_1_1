@@ -22,7 +22,7 @@
 #define __ENABLE_LED__  1
 #define __ENABLE_BUTTON__ 1
 #define __ENABLE_ACC__  0
-#define __ENABLE_BLE__ 0
+#define __ENABLE_BLE__ 1
 #define __ENABLE_WDT__ 0
 #define __ENABLE_NFC__  0
 #define __ENABLE_DEEP_SLEEP__ 0
@@ -46,12 +46,13 @@ typedef enum {
   evIrqHi,
   evIrqLo,
   evButton,
+  evCmdPowerOff,
 } events_e;
 
 typedef enum {
-  srNone = 0,
-  srPowerOff,
-} settings_result_e;
+  scmNone = 0,
+  scmPowerOff,
+} settings_cmd_e;
 
 extern app_settings_s app_settings;
 

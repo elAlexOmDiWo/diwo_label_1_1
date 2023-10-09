@@ -12,7 +12,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 
-#define LOG_LEVEL_MAIN LOG_LEVEL_INF
+#define LOG_LEVEL_MAIN LOG_LEVEL_DBG
 
 LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
@@ -29,7 +29,7 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #include "power.h"
 
 #include "main.h"
-#include "settings.h"
+#include "setting.h"
 
 #include <nrfx.h>
 #include <hal/nrf_gpio.h>
@@ -108,9 +108,11 @@ typedef struct {
 
 app_settings_s app_settings = {
   .adv_period = DEFAULT_ADV_PERIOD_S,
-  .power      = 0,
+  .power = 0,
   .hit_threshold = 0,
-  .fall_threshold = 0
+  .fall_threshold = 0,
+  .pass = APP_PASSWORD,
+  .open = false,
 };
 
 app_var_s app_vars = { 0 };
@@ -133,6 +135,7 @@ adv_data_s adv_data = {
 
 struct bt_le_ext_adv *adv = NULL;
 
+
 #if (__ENABLE_BLE__ == 1)
 static const struct bt_data ad[] = {
   BT_DATA_BYTES( BT_DATA_FLAGS, BT_LE_AD_NO_BREDR ),
@@ -144,6 +147,7 @@ K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
 
 void print_device_info( void );
+int goto_deep_sleep(void);
 
 /** \brief send event to main loop 
 *   \param event
@@ -160,8 +164,6 @@ void adv_timer_exp( struct k_timer *timer_id ) {
   k_msgq_put( &qevent, &event, K_NO_WAIT );
 }
 
-int goto_deep_sleep(void);
-
 void main( void ) {
   int err = 0;
   
@@ -169,7 +171,13 @@ void main( void ) {
   LOG_PRINTK( RTT_CTRL_CLEAR );
   LOG_PRINTK( RTT_CTRL_TEXT_WHITE );
 #endif
-  
+
+#if (__ENABLE_NFC__ ==1 )
+  SELF_TEST_MESS( "FIRMWARE", "Diwo Label with NFC; built on " __DATE__ " at " __TIME__ " for " CONFIG_BT_DIS_HW_REV_STR);
+#else
+  SELF_TEST_MESS("FIRMWARE", "Diwo Label; built on " __DATE__ " at " __TIME__ " for " CONFIG_BT_DIS_HW_REV_STR);
+#endif
+  //  SELF_TEST_MESS( "MCU", "DevAddr %08X %08X", NRF_FICR->DEVICEADDR[1], NRF_FICR->DEVICEADDR[0]);
   SELF_TEST_MESS( "INIT START", "OK" );
 
   init_board();
@@ -248,10 +256,6 @@ void main( void ) {
     }
     goto_deep_sleep();
   }
-
-#if (__ENABLE_BUTTON__ == 1)
-  init_button();
-#endif  
   
   k_timer_init(&adv_timer, adv_timer_exp, NULL);
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
@@ -321,7 +325,7 @@ void main( void ) {
           }
           
           adv_data.counter++;
-#if (__ENABLE_BLE__ == 1)
+#if (__ENABLE_BLE__ != 0)
           bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
 
           LOG_DBG( "\rSend advertisment.\r" );
@@ -386,20 +390,23 @@ void main( void ) {
         case evButton: {
           switch (label_mode ) {
             case lmBeacon: {
-              label_mode = lmDevice;
+//              label_mode = lmDevice;
               static int counter = 0;
               int value = get_button_level();
               if (value == 1) {
-                LOG_DBG("Key press - %d\r", counter);
+                LOG_DBG("Key press - %d\r", counter++);
                 k_timer_stop(&adv_timer );
                 err = bt_le_adv_stop();
                 if (0 != (err = run_device())) {
                   LOG_ERR("Error run device - %d\r", err);
                 }
+                app_settings.open = false;
+
+                //set_tx_power(app_settings.power);
                 k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));
               }
               else {
-                LOG_DBG("Key release - %d\r", counter);
+                LOG_DBG("Key release - %d\r", counter++);
               } 
               break;
             }
@@ -408,18 +415,6 @@ void main( void ) {
               break;
             }              
           }
-//          
-//
-//          int value = get_button_level();
-//          if (value == 1) {
-//            LOG_DBG("Key press - %d\r", counter);
-//          }
-//          else {
-//            LOG_DBG("Key release - %d\r", counter);
-//            
-//          }
-//          counter++;
-//          led_blinck(1000);
           break;
         }
         case evCmdPowerOff: {
@@ -478,7 +473,7 @@ int goto_deep_sleep(void) {
   nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
   nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
 
-  LOG_DBG("System off\n");
+  LOG_INF("System off\n");
   k_sleep(K_MSEC(1000));
   pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
   pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
@@ -489,3 +484,14 @@ int goto_deep_sleep(void) {
   return -1;
 #endif
 }
+
+/** \mainpage
+* По включению устройство проходит начальное тестирование и уходит в глубокий сон.
+* По нажатию кнопки устройство выходит из сна и переходит в режим метки.
+* По следующему нажатию переходит в режим настройки для изменения параметров.
+* На подключение к устройству действует таймаут 10 сек - рабочий режим / 100 сек - отладка.
+* При подключении у устройству становиться возможной запись параметров.
+* Таймаут операции - 120 сек - рабочий режим / 1200 сек - отладка.
+* Запись в 5-й по счёту пункт пароля ( 01 02 03 04 05 06 07 08 - отладочный, рабочий - отдельно ) разрешает управлять устройством.
+* Запись команды 95 в 6-й пункт приводит к сбросу устройства и переходу в режим сна.
+*/

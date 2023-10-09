@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/util.h>
@@ -12,7 +12,7 @@
 
 #include "main.h"
 
-#define LOG_LEVEL_BUTTON LOG_LEVEL_INF
+#define LOG_LEVEL_BUTTON LOG_LEVEL_DBG
 
 #define DEBOUNCE_INTERVAL				10
 
@@ -34,11 +34,12 @@ static struct k_work_delayable button_pressed;
 
 static void button_cb(const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins) {
   k_work_reschedule(&button_pressed, K_MSEC(DEBOUNCE_INTERVAL));
-//  send_event(evButton );
+//  LOG_DBG("Button pressed irq\n");
 }
 
 static void button_pressed_fn(struct k_work *work) {
   send_event(evButton);
+  LOG_DBG("Button pressed send event\n");
 //  int err = callback_ctrl(false);
 //
 //  if (err) {

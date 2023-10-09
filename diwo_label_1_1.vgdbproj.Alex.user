@@ -10,7 +10,28 @@
       <CXXCatchpoints />
     </CatchpointConfiguration>
     <MaskInterruptsWhileStepping>false</MaskInterruptsWhileStepping>
-    <MemoryWindowPreferences />
+    <MemoryWindowPreferences>
+      <MemoryWindowPreferences>
+        <ExpressionHistory>
+          <string>0x2000773c</string>
+        </ExpressionHistory>
+        <SymbolicMode>true</SymbolicMode>
+        <TakeAddressMode>false</TakeAddressMode>
+        <Format>
+          <DataWidth>OneByte</DataWidth>
+          <DataFormat>Hexadecimal</DataFormat>
+          <TextFormat>ANSI</TextFormat>
+        </Format>
+        <LiveMemorySettings>
+          <Enabled>false</Enabled>
+          <BreakOnChanges>false</BreakOnChanges>
+          <AutoRefresh>false</AutoRefresh>
+          <RefreshTimeout>0</RefreshTimeout>
+        </LiveMemorySettings>
+        <ShowStatusBar>true</ShowStatusBar>
+        <DisplaySymbols>false</DisplaySymbols>
+      </MemoryWindowPreferences>
+    </MemoryWindowPreferences>
     <RealTimeWatchPreferences>
       <Presets />
       <ImplicitPreset>

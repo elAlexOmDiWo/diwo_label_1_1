@@ -1,5 +1,5 @@
 
-#include "settings.h"
+#include "setting.h"
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -12,14 +12,16 @@
 #include "main.h"
 
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/reboot.h>
 
 #define LOG_LEVEL_SETTING LOG_LEVEL_DBG
 
 LOG_MODULE_REGISTER(setting, LOG_LEVEL_SETTING);
 
-#define BT_DEVICE_NAME "Alex Test device"
+#define DEVICE_NAME CONFIG_BT_DIS_MODEL    //CONFIG_BT_DIS_MODEL
 
-#define DEVICE_NAME "Alex test"
+const char *dis_model = DEVICE_NAME;//CONFIG_BT_DIS_MODEL;
+
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
 struct bt_uuid_128 setting_service_uuid =
@@ -65,30 +67,34 @@ static int sleep_counter = 0;
 
 ssize_t write_period(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
   if (offset + len > sizeof(app_settings.adv_period )) {
+    LOG_ERR("Write period ERROR - %d\n", app_settings.adv_period);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
   app_settings.adv_period = *(int *)buf;
+  LOG_DBG("Write period OK - %d\n", app_settings.adv_period );
   return len;
 }
 
 ssize_t read_period(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
-  const char *value = attr->user_data;
-  app_settings.adv_period++;
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, strlen(value));
+  const int *value = attr->user_data;
+  LOG_DBG("Read period OK - %d\n", *value);
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
 }
 
 ssize_t write_power(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
   if (offset + len > sizeof(app_settings.power)) {
+    LOG_ERR("Write period ERROR - %d\n", app_settings.adv_period);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-
   app_settings.power = *(int *)buf;
+  LOG_DBG("Write power OK - %d\n", app_settings.power);
   return len;
 }
 
 ssize_t read_power(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
-  const char *value = attr->user_data;
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, strlen(value));
+  const int *value = attr->user_data;
+  LOG_DBG("Read power OK - %d\n", *value );
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(value));
 }
 
 ssize_t write_hit_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
@@ -96,54 +102,77 @@ ssize_t write_hit_threshold( struct bt_conn *conn, const struct bt_gatt_attr *at
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
   app_settings.hit_threshold = *(int *)buf;
+  LOG_DBG("Write hit_threshold - %d\n", app_settings.hit_threshold);
   return len;
 }
 
 ssize_t read_hit_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset ) {
-  const char *value = attr->user_data;
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, strlen(value));
+  const int *value = attr->user_data;
+  LOG_DBG("Read hit_threshold OK - %d\n", *value);
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
 }
 
 ssize_t write_fall_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags ) {
   if (offset + len > sizeof(app_settings.fall_threshold)) {
+    LOG_ERR("Write fall_threshold ERROR - %d\n", app_settings.fall_threshold);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
   app_settings.fall_threshold = *(int *)buf;
+  LOG_DBG("Write fall_threshold OK - %d\n", app_settings.fall_threshold);
   return len;
 }
 
 ssize_t read_fall_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset ) {
-  const char *value = attr->user_data;
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, strlen(value));
+  const int *value = attr->user_data;
+  LOG_DBG("Read fall_threshold OK - %d\n", *value);
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
 }
 
 ssize_t write_pass(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
-  if (offset + len > sizeof(app_settings.fall_threshold)) {
+  uint8_t p[32] = {0};
+  static volatile int counter = 0;
+  
+  if (offset + len > sizeof(app_settings.pass)) {
+    LOG_DBG("Set password ERROR - %d\n", offset + len);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  app_settings.fall_threshold = *(int *)buf;
+  //memcpy(buf, app_settings.pass, sizeof(app_settings.pass));
+  memcpy(p, buf, ( len < sizeof( p ) ? len:sizeof( p )));
+  counter++;
+  LOG_DBG("pass buffer %02x%02x\n", p[0], p[1]);
+  if ( 0 != memcmp((int *)p, app_settings.pass, sizeof(app_settings.pass))) {
+    LOG_DBG("Set password ERROR - mismach - %d\n", app_settings.fall_threshold);
+    return len;
+  }
+  LOG_DBG("Set password OK - %d\n", app_settings.fall_threshold);
+  app_settings.open = true;
+  
   return len;
 }
 
 ssize_t read_pass(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
-  const char *value = attr->user_data;
+  const uint8_t *value = attr->user_data;
+//  LOG_DBG("SAADC Low Power Example; built on " __DATE__ " at " __TIME__ " for " );//BT_DEVICE_NAME); //BOARD_STR);
+//  LOG_DBG("DevAddr %08X %08X", NRF_FICR->DEVICEADDR[1], NRF_FICR->DEVICEADDR[0]);
   return bt_gatt_attr_read(conn, attr, buf, len, offset, value, strlen(value));
 }
 
 ssize_t write_cmd(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
-
-  settings_cmd_e cmd = *(int *)buf;
-  switch (cmd) {
-    case scmPowerOff: {
-      break;
+  if (app_settings.open) {
+    settings_cmd_e cmd = *(int *)buf;
+    switch (cmd) {
+      case scmPowerOff: {
+        sys_reboot(SYS_REBOOT_COLD);
+        break;
+      }
     }
   }
   return len;
 }
 
 ssize_t read_cmd(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
-  const char *value = attr->user_data;
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, strlen(value));
+  const bool *value = attr->user_data;
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
 }
 
 static struct bt_gatt_attr app_settings_attrs[] = {
@@ -162,10 +191,10 @@ static struct bt_gatt_attr app_settings_attrs[] = {
                          BT_GATT_PERM_READ | BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
                          read_fall_threshold, write_fall_threshold, &app_settings.fall_threshold),
   BT_GATT_CHARACTERISTIC(&app_settings_pass_uuid.uuid, BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
-                         BT_GATT_PERM_READ | BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
+                         /* BT_GATT_PERM_READ |*/ BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
                          read_pass, write_pass, &app_settings.hit_threshold),
   BT_GATT_CHARACTERISTIC(&app_settings_cmd_uuid.uuid, BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
-                         BT_GATT_PERM_READ | BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
+                         /* BT_GATT_PERM_READ |*/ BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
                          read_cmd, write_cmd, &app_settings.fall_threshold),  
 };
 
@@ -183,10 +212,6 @@ static void connected(struct bt_conn *conn, uint8_t err) {
 
   bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
   LOG_DBG("Connected %s", addr);
-
-//  current_conn = bt_conn_ref(conn);
-//
-//  dk_set_led_on(CON_STATUS_LED);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason) {
@@ -197,16 +222,6 @@ static void disconnected(struct bt_conn *conn, uint8_t reason) {
   LOG_DBG("Disconnected: %s (reason %u)", addr, reason);
 
   sleep_counter = 0;
-  //  if (auth_conn) {
-  //    bt_conn_unref(auth_conn);
-  //    auth_conn = NULL;
-  //  }
-  //
-  //  if (current_conn) {
-  //    bt_conn_unref(current_conn);
-  //    current_conn = NULL;
-  //    dk_set_led_off(CON_STATUS_LED);
-  //  }
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
@@ -250,9 +265,11 @@ int run_device(void) {
   
   sleep_counter = WAITE_CONNECTION_TIME;
 
-  while ( sleep_counter-- > 0 ) {
-    LOG_DBG("Sleep counter - %d\n", sleep_counter);
-    k_sleep(K_SECONDS(1));
+  while (sleep_counter-- > 0) {
+    if (sleep_counter < 60) {
+      LOG_DBG("Sleep counter - %d\n", sleep_counter);
+    }
+  k_sleep(K_SECONDS(1));
   }
 
   if (0 != (err = bt_gatt_service_unregister(&app_settings_svc))) {

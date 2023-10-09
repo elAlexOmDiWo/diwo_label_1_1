@@ -21,3 +21,7 @@ int init_acc(void);
 int read_adv_acc_data(adv_data_s *pdata);
 
 int read_sensor_value(struct sensor_value *val);
+
+int acc_set_shock_limit(int limit);
+
+int acc_set_freefall_limit(int limit);

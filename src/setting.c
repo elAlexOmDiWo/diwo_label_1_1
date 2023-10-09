@@ -14,6 +14,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/reboot.h>
 
+#include "power.h"
+
 #define LOG_LEVEL_SETTING LOG_LEVEL_DBG
 
 LOG_MODULE_REGISTER(setting, LOG_LEVEL_SETTING);
@@ -23,6 +25,12 @@ LOG_MODULE_REGISTER(setting, LOG_LEVEL_SETTING);
 const char *dis_model = DEVICE_NAME;//CONFIG_BT_DIS_MODEL;
 
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
+
+static struct bt_conn *conn = NULL;
+
+void *get_connect(void) {
+  return conn;
+}
 
 struct bt_uuid_128 setting_service_uuid =
     BT_UUID_INIT_128(0xf0, 0xde, 0xbc, 0x9a, 0xd8, 0x65, 0x11, 0xed, 0xb1, 0x6f,
@@ -65,36 +73,47 @@ static const struct bt_data sd[] = {
 
 static int sleep_counter = 0;
 
+static int result = 0;
+
 ssize_t write_period(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
   if (offset + len > sizeof(app_settings.adv_period )) {
     LOG_ERR("Write period ERROR - %d\n", app_settings.adv_period);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  app_settings.adv_period = *(int *)buf;
+  app_settings.adv_period = *(int8_t *)buf;
   LOG_DBG("Write period OK - %d\n", app_settings.adv_period );
   return len;
 }
 
 ssize_t read_period(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
-  const int *value = attr->user_data;
-  LOG_DBG("Read period OK - %d\n", *value);
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
-}
+  LOG_DBG("Read period OK - %d\n", app_settings.adv_period);
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, &app_settings.adv_period, sizeof(app_settings.adv_period));
+} 
 
 ssize_t write_power(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
+  int8_t temp;
   if (offset + len > sizeof(app_settings.power)) {
     LOG_ERR("Write period ERROR - %d\n", app_settings.adv_period);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  app_settings.power = *(int *)buf;
+  temp = *(int8_t *)buf;
+  if ((temp >= app_settings.power_min) && (temp <= app_settings.power_max)) {
+    if (app_settings.open == true ) {
+      app_settings.power = temp;
+      set_power_tx(app_settings.power);
+      LOG_DBG("Write power OK - value %d\n", temp);
+    }    
+  }
+  else {
+    LOG_DBG("Write power error - value out of bonds %d\n", temp );
+  }
   LOG_DBG("Write power OK - %d\n", app_settings.power);
   return len;
 }
 
 ssize_t read_power(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
-  const int *value = attr->user_data;
-  LOG_DBG("Read power OK - %d\n", *value );
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(value));
+  LOG_DBG("Read power OK - %d\n", app_settings.power );
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, &app_settings.power, sizeof(app_settings.power));
 }
 
 ssize_t write_hit_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
@@ -152,8 +171,6 @@ ssize_t write_pass(struct bt_conn *conn, const struct bt_gatt_attr *attr, const 
 
 ssize_t read_pass(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
   const uint8_t *value = attr->user_data;
-//  LOG_DBG("SAADC Low Power Example; built on " __DATE__ " at " __TIME__ " for " );//BT_DEVICE_NAME); //BOARD_STR);
-//  LOG_DBG("DevAddr %08X %08X", NRF_FICR->DEVICEADDR[1], NRF_FICR->DEVICEADDR[0]);
   return bt_gatt_attr_read(conn, attr, buf, len, offset, value, strlen(value));
 }
 
@@ -233,10 +250,12 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 };
 
 int run_device(void) {
-
+  
   struct bt_le_adv_param param;
   int err = 0;
 
+  result = 0;
+  
   if (!bt_is_ready()) {
     if (0 != (err = bt_enable(NULL))) {
       LOG_ERR("Error BT Enable - %d\n", err);
@@ -277,6 +296,9 @@ int run_device(void) {
     return err;
   }
 
+  NRF_RADIO->TXPOWER = 0;
+
+  conn = NULL;
   LOG_DBG("Exit device mode\n" );
   return 0;
 }

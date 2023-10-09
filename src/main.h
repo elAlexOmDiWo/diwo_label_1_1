@@ -27,7 +27,7 @@
 #define __ENABLE_BLE__ 1
 #define __ENABLE_WDT__ 0
 #define __ENABLE_NFC__  0
-#define __ENABLE_DEEP_SLEEP__ 1
+#define __ENABLE_DEEP_SLEEP__ 0
 #define __SEGGER_FORMAT 0
 #define ODR_VALUE 100
 #define DEFAULT_ADV_PERIOD_S 1 // Период отсылки рекламы по умолчанию
@@ -43,6 +43,14 @@
 #ifndef APP_PASSWORD
 #warning Use default password
 #define APP_PASSWORD      DEFAULT_PASSWORD  
+#endif
+
+#if (__DEBUG__ != 0)
+#define WAITE_CONNECTION_TIME 10
+#define WAITE_DISCONNECTION_TIME 1200
+#else
+#define WAITE_CONNECTION_TIME 10
+#define WAITE_DISCONNECTION_TIME 120
 #endif
 
 #ifndef ADV_PERIOD_MIN
@@ -77,13 +85,14 @@
 #endif
 
 typedef struct {
-  int adv_period;
-  int adv_period_min;  
-  int adv_period_max;
+  int8_t adv_period;
+  int8_t adv_period_min;  
+  int8_t adv_period_max;
 
-  int power;
-  int power_min;
-  int power_max;
+  int8_t power;
+  int8_t power_min;
+  int8_t power_max;
+  
   int hit_threshold;
   int hit_threshold_min;
   int hit_threshold_max;
@@ -108,6 +117,10 @@ typedef enum {
 
 typedef enum {
   scmNone = 0,
+  scmPeriodSet = 1,
+  scmPowerSet = 2,
+  scmHitThreshold = 4,
+  scmFallThreshold = 8,  
   scmPowerOff = 0x95,
 } settings_cmd_e;
 

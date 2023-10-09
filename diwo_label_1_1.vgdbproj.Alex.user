@@ -281,6 +281,22 @@
           <LastUsed>133404631956788586</LastUsed>
         </State>
       </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>RADIO.TXPOWER.TXPOWER</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>133413335806984431</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
+      <HardwareRegisterRecord>
+        <Name>RADIO.TXPOWER</Name>
+        <State>
+          <IsFavorite>false</IsFavorite>
+          <IsLive>false</IsLive>
+          <LastUsed>133413355315610812</LastUsed>
+        </State>
+      </HardwareRegisterRecord>
     </HardwareRegisters>
   </DebugPreferences>
 </VisualGDBUserPreferences>

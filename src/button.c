@@ -40,33 +40,6 @@ static void button_cb(const struct device *port, struct gpio_callback *cb, gpio_
 static void button_pressed_fn(struct k_work *work) {
   send_event(evButton);
   LOG_DBG("Button pressed send event\n");
-//  int err = callback_ctrl(false);
-//
-//  if (err) {
-//    LOG_ERR("Cannot disable callbacks");
-//    module_set_state(MODULE_STATE_ERROR);
-//    return;
-//  }
-//
-//  switch (state) {
-//  case STATE_IDLE:
-//    if (IS_ENABLED(CONFIG_CAF_BUTTONS_PM_EVENTS)) {
-//      EVENT_SUBMIT(new_wake_up_event());
-//    }
-//    break;
-//
-//  case STATE_ACTIVE:
-//    state = STATE_SCANNING;
-//    k_work_reschedule(&matrix_scan, K_MSEC(DEBOUNCE_INTERVAL));
-//    break;
-//
-//  case STATE_SCANNING:
-//  case STATE_SUSPENDING:
-//  default:
-//    /* Invalid state */
-//    __ASSERT_NO_MSG(false);
-//    break;
-//  }
 }
 
 bool init_button( void ) {

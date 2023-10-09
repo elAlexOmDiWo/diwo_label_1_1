@@ -87,13 +87,12 @@ int read_sensor_value( struct sensor_value* val ) {
   return res;
 }
 
-int acc_set_shock_limit(int limit) {
-//  return sensor_trigger_set(acc_lis2, , lis12dh_trigger_handler);
-#warning ToDo - дописать реализацию
+int acc_set_freefall_limit(int limit) {
   return 0;
 }
 
-int acc_set_freefall_limit(int limit) {
-#warning ToDo - дописать реализацию  
+int acc_set_shock_limit(int limit) {
+  //  return sensor_attr_set(acc_lis2, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_UPPER_THRESH, &sensor_value);
+  //  return sensor_trigger_set(acc_lis2, , lis12dh_trigger_handler);
   return 0;
 }

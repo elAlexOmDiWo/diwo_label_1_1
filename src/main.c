@@ -7,12 +7,13 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/bluetooth/hci.h>
 
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 
-#define LOG_LEVEL_MAIN LOG_LEVEL_DBG
+#define LOG_LEVEL_MAIN LOG_LEVEL_INF
 
 LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
@@ -108,7 +109,9 @@ typedef struct {
 
 app_settings_s app_settings = {
   .adv_period = DEFAULT_ADV_PERIOD_S,
-  .power = 0,
+  .power_min = 0,
+  .power_max = txp40m,
+  .power = 2,
   .hit_threshold = 0,
   .fall_threshold = 0,
   .pass = APP_PASSWORD,
@@ -215,7 +218,6 @@ void main( void ) {
 #endif
 
 #if (__ENABLE_BLE__ == 1 )  
-  /* Initialize theBuetooth Subsstm */
   if ( 0 != bt_enable( NULL )) {
       SELF_TEST_MESS( "BLE", "ERROR" );
   }
@@ -255,7 +257,7 @@ void main( void ) {
       LOG_ERR("CONFIG_APP_RETENTION\n");
     }
     goto_deep_sleep();
-  }
+  } 
   
   k_timer_init(&adv_timer, adv_timer_exp, NULL);
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
@@ -281,10 +283,10 @@ void main( void ) {
           err = bt_le_adv_stop();
 
           if (err) {
-            LOG_ERR( "Advertising failed to stop (err %d)\n", err );
+            LOG_ERR( "Advertising stop FAULT(err %d)\n", err );
           } 
           else {
-            LOG_DBG( "Advertising ok stop\n" );
+            LOG_DBG( "Advertising stop OK\n" );
           }       
 #endif
           
@@ -326,7 +328,12 @@ void main( void ) {
           
           adv_data.counter++;
 #if (__ENABLE_BLE__ != 0)
-          bt_le_adv_start( BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE( ad ), NULL, 0 );
+          if (0 != (err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE(ad), NULL, 0))) {
+            LOG_ERR("Advertising start FAULT(err %d)\n", err);
+          }
+          else {
+            LOG_DBG("Advertising start OK\n");
+          }
 
           LOG_DBG( "\rSend advertisment.\r" );
           LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
@@ -390,19 +397,34 @@ void main( void ) {
         case evButton: {
           switch (label_mode ) {
             case lmBeacon: {
-//              label_mode = lmDevice;
+              int result;
+              //label_mode = lmDevice;
               static int counter = 0;
               int value = get_button_level();
               if (value == 1) {
                 LOG_DBG("Key press - %d\r", counter++);
                 k_timer_stop(&adv_timer );
                 err = bt_le_adv_stop();
-                if (0 != (err = run_device())) {
-                  LOG_ERR("Error run device - %d\r", err);
+                if (0 <= (result = run_device())) {
+                  if (result & scmPeriodSet) {
+                    LOG_DBG("ADV period change - %d\r", app_settings.adv_period );
+                  }
+                  if (result & scmPowerSet) {
+                    set_power_tx(app_settings.power);
+                    LOG_DBG("ADV power change - %d\r", app_settings.adv_period);
+                  }
+                  if (result & scmHitThreshold) {
+#if (__ENABLE_ACC__ != 0)
+                    acc_set_shock_limit(app_settings.hit_threshold);
+#endif
+                  }
+                  if (result & scmFallThreshold) {
+#if (__ENABLE_ACC__ != 0)
+                    acc_set_freefall_limit(app_settings.fall_threshold);
+#endif                    
+                  }
                 }
                 app_settings.open = false;
-
-                //set_tx_power(app_settings.power);
                 k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));
               }
               else {

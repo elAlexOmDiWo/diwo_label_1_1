@@ -13,7 +13,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 
-#define LOG_LEVEL_MAIN LOG_LEVEL_INF
+#define LOG_LEVEL_MAIN LOG_LEVEL_DBG
 
 LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 
@@ -122,6 +122,8 @@ app_var_s app_vars = { 0 };
 
 label_mode_e label_mode = lmInit;
 
+//uint32_t key_times[20];
+
 adv_data_s adv_data = { 
   .man_id = DIWO_ID,
   .x = 0,
@@ -146,6 +148,13 @@ static const struct bt_data ad[] = {
 };
 #endif
 
+static struct k_work_delayable key_on_timer;
+
+static void key_on_timer_fn(struct k_work *work) {
+  send_event(evButtonOnEnd);
+  LOG_DBG("Key on delay end\n");
+}
+
 K_MSGQ_DEFINE( qevent, sizeof( uint8_t ), 3, 1 );
 struct k_timer adv_timer; //Таймер
 
@@ -169,6 +178,8 @@ void adv_timer_exp( struct k_timer *timer_id ) {
 
 void main( void ) {
   int err = 0;
+  int key_counter = 0;
+  int time = sys_clock_cycle_get_32();  
   
 #if ( __SEGGER_FORMAT == 1 )
   LOG_PRINTK( RTT_CTRL_CLEAR );
@@ -245,12 +256,39 @@ void main( void ) {
   print_device_info();
 #endif
 
-  k_sleep(K_SECONDS(1));
-
+#if (__ENABLE_DEEP_SLEEP__ != 0)  
   uint32_t reas = get_reset_reason();
   if( reas & NRF_POWER_RESETREAS_OFF_MASK) {
+//    volatile static int counter = 0;
     LOG_DBG("System resume\n");
-    printk("System resume printk\n");
+    while (1) {
+      uint8_t event = 0;
+      if (0 == k_msgq_get(&qevent, &event, K_SECONDS(2))) {
+        if( event == evButton ) {
+          if (1 == get_button_level()) {
+            int event_time = sys_clock_tick_get_32();
+            int dtime = event_time - time;
+            time = event_time;
+            LOG_DBG("Key delay - %d\n", dtime);
+            if((dtime < KEY_EVENT_MIN) || (dtime > KEY_EVENT_MAX)) {
+              LOG_DBG("Key delay too short\n");
+              goto_deep_sleep();
+            }
+            if (key_counter++ >= 3) {
+              LOG_DBG("Key pass enter\n");
+#if (__ENABLE_LED__ == 1)
+              led_blinck(300);
+#endif              
+              break;
+            }
+          }
+        }
+      }
+      else {
+        LOG_DBG("Key delay too long\n");
+        goto_deep_sleep();
+      }
+    }
   }
   else {
     if (IS_ENABLED(CONFIG_APP_RETENTION)) {
@@ -258,6 +296,7 @@ void main( void ) {
     }
     goto_deep_sleep();
   } 
+#endif
   
   k_timer_init(&adv_timer, adv_timer_exp, NULL);
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
@@ -271,8 +310,10 @@ void main( void ) {
   SELF_TEST_MESS("WDT", "DISABLE");
 #endif
 
+  k_work_init_delayable(&key_on_timer, key_on_timer_fn);
   label_mode = lmBeacon;
-
+  key_counter = 0;
+  
   while (1) {
     uint8_t event = 0;
     if (0 == k_msgq_get( &qevent, &event, K_FOREVER )) {
@@ -398,34 +439,73 @@ void main( void ) {
           switch (label_mode ) {
             case lmBeacon: {
               int result;
-              //label_mode = lmDevice;
               static int counter = 0;
               int value = get_button_level();
               if (value == 1) {
-                LOG_DBG("Key press - %d\r", counter++);
-                k_timer_stop(&adv_timer );
-                err = bt_le_adv_stop();
-                if (0 <= (result = run_device())) {
-                  if (result & scmPeriodSet) {
-                    LOG_DBG("ADV period change - %d\r", app_settings.adv_period );
-                  }
-                  if (result & scmPowerSet) {
-                    set_power_tx(app_settings.power);
-                    LOG_DBG("ADV power change - %d\r", app_settings.adv_period);
-                  }
-                  if (result & scmHitThreshold) {
-#if (__ENABLE_ACC__ != 0)
-                    acc_set_shock_limit(app_settings.hit_threshold);
-#endif
-                  }
-                  if (result & scmFallThreshold) {
-#if (__ENABLE_ACC__ != 0)
-                    acc_set_freefall_limit(app_settings.fall_threshold);
+                k_work_reschedule(&key_on_timer, K_TICKS( KEY_EVENT_MAX));
+                int event_time = sys_clock_tick_get_32();
+                int dtime = event_time - time;
+                time = event_time;
+                LOG_DBG("Key delay - %d\n", dtime);
+                if (key_counter++) {
+                  if ((dtime < KEY_EVENT_MIN) || (dtime > KEY_EVENT_MAX)) {
+                    LOG_DBG("Key delay too short\n");
+                    key_counter = 0;
+                    break;
+                  }                  
+                  if (key_counter >= 3) {
+                    
+                    k_timer_stop(&adv_timer);
+                    err = bt_le_adv_stop();
+                    LOG_DBG("Key pass enter\n");
+#if (__ENABLE_LED__ == 1)
+                    led_blinck(300);
 #endif                    
+                    if (0 <= (result = run_device())) {
+                      
+                    }
+                    app_settings.open = false;
+                    k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));                    
                   }
                 }
-                app_settings.open = false;
-                k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));
+//                if ((dtime < KEY_EVENT_MIN) || (dtime > KEY_EVENT_MAX)) {
+//                  LOG_DBG("Key delay too short\n");
+//                  goto_deep_sleep();
+//                }
+//                if (key_counter++ >= 3) {
+//                  LOG_DBG("Key pass enter\n");
+//                #if (__ENABLE_LED__ == 1)
+//                  led_blinck(300);
+//                #endif
+//                  break;
+//                }
+//
+//                
+//                
+//                LOG_DBG("Key press - %d\r", counter++);
+//                k_timer_stop(&adv_timer );
+//                err = bt_le_adv_stop();
+//                if (0 <= (result = run_device())) {
+//                  if (result & scmPeriodSet) {
+//                    LOG_DBG("ADV period change - %d\r", app_settings.adv_period );
+//                  }
+//                  if (result & scmPowerSet) {
+//                    set_power_tx(app_settings.power);
+//                    LOG_DBG("ADV power change - %d\r", app_settings.adv_period);
+//                  }
+//                  if (result & scmHitThreshold) {
+//#if (__ENABLE_ACC__ != 0)
+//                    acc_set_shock_limit(app_settings.hit_threshold);
+//#endif
+//                  }
+//                  if (result & scmFallThreshold) {
+//#if (__ENABLE_ACC__ != 0)
+//                    acc_set_freefall_limit(app_settings.fall_threshold);
+//#endif                    
+//                  }
+//                }
+//                app_settings.open = false;
+//                k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));
               }
               else {
                 LOG_DBG("Key release - %d\r", counter++);
@@ -436,6 +516,13 @@ void main( void ) {
               label_mode = lmBeacon;
               break;
             }              
+          }
+          break;
+        }
+        case evButtonOnEnd: {
+          if (key_counter != 0) {
+            LOG_DBG("Key delay too long\n");
+            key_counter = 0;
           }
           break;
         }
@@ -491,7 +578,7 @@ void print_device_info( void ) {
 }
 
 int goto_deep_sleep(void) {
-#if (__ENABLE_DEEP_SLEEP__ == 1)
+#if (__ENABLE_DEEP_SLEEP__ != 0)
   nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
   nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
 
@@ -508,12 +595,12 @@ int goto_deep_sleep(void) {
 }
 
 /** \mainpage
-* По включению устройство проходит начальное тестирование и уходит в глубокий сон.
-* По нажатию кнопки устройство выходит из сна и переходит в режим метки.
-* По следующему нажатию переходит в режим настройки для изменения параметров.
-* На подключение к устройству действует таймаут 10 сек - рабочий режим / 100 сек - отладка.
-* При подключении у устройству становиться возможной запись параметров.
-* Таймаут операции - 120 сек - рабочий режим / 1200 сек - отладка.
-* Запись в 5-й по счёту пункт пароля ( 01 02 03 04 05 06 07 08 - отладочный, рабочий - отдельно ) разрешает управлять устройством.
-* Запись команды 95 в 6-й пункт приводит к сбросу устройства и переходу в режим сна.
+* По включению устройство проходит начальное тестирование и уходит в глубокий сон.<br>
+* По нажатию кнопки устройство выходит из сна и переходит в режим метки.<br>
+* По следующему нажатию переходит в режим настройки для изменения параметров.<br>
+* На подключение к устройству действует таймаут 10 сек - рабочий режим / 100 сек - отладка.<br>
+* При подключении у устройству становиться возможной запись параметров.<br>
+* Таймаут операции - 120 сек - рабочий режим / 1200 сек - отладка.<br>
+* Запись в 5-й по счёту пункт пароля ( 01 02 03 04 05 06 07 08 - отладочный, рабочий - отдельно ) разрешает управлять устройством.<br>
+* Запись команды 95 в 6-й пункт приводит к сбросу устройства и переходу в режим сна.<br>
 */

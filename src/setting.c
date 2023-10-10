@@ -149,16 +149,14 @@ ssize_t read_fall_threshold( struct bt_conn *conn, const struct bt_gatt_attr *at
 
 ssize_t write_pass(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
   uint8_t p[32] = {0};
-  static volatile int counter = 0;
   
   if (offset + len > sizeof(app_settings.pass)) {
     LOG_DBG("Set password ERROR - %d\n", offset + len);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  //memcpy(buf, app_settings.pass, sizeof(app_settings.pass));
+  
   memcpy(p, buf, ( len < sizeof( p ) ? len:sizeof( p )));
-  counter++;
-  LOG_DBG("pass buffer %02x%02x\n", p[0], p[1]);
+  LOG_DBG("pass buffer %02x%02x%02x%02x%02x%02x%02x%02x\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
   if ( 0 != memcmp((int *)p, app_settings.pass, sizeof(app_settings.pass))) {
     LOG_DBG("Set password ERROR - mismach - %d\n", app_settings.fall_threshold);
     return len;

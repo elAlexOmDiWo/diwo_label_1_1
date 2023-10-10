@@ -12,7 +12,7 @@
 
 #include "main.h"
 
-#define LOG_LEVEL_BUTTON LOG_LEVEL_DBG
+#define LOG_LEVEL_BUTTON LOG_LEVEL_ERR
 
 #define DEBOUNCE_INTERVAL				10
 
@@ -32,9 +32,10 @@ static struct gpio_callback button_cb_data;
 
 static struct k_work_delayable button_pressed;
 
+//static int btn_event_count = 0;
+
 static void button_cb(const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins) {
   k_work_reschedule(&button_pressed, K_MSEC(DEBOUNCE_INTERVAL));
-//  LOG_DBG("Button pressed irq\n");
 }
 
 static void button_pressed_fn(struct k_work *work) {

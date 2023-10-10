@@ -24,7 +24,7 @@
 #define __ENABLE_LED__  1
 #define __ENABLE_BUTTON__ 1
 #define __ENABLE_ACC__  0
-#define __ENABLE_BLE__ 1
+#define __ENABLE_BLE__ 0
 #define __ENABLE_WDT__ 0
 #define __ENABLE_NFC__  0
 #define __ENABLE_DEEP_SLEEP__ 0
@@ -84,6 +84,9 @@
 #define FALL_THRESHOLD_MAX
 #endif
 
+#define KEY_EVENT_MIN ( 32768 * 0.5 )
+#define KEY_EVENT_MAX ( 32768 * 1.5 )
+
 typedef struct {
   int8_t adv_period;
   int8_t adv_period_min;  
@@ -112,6 +115,7 @@ typedef enum {
   evIrqHi,
   evIrqLo,
   evButton,
+  evButtonOnEnd,
   evCmdPowerOff,
 } events_e;
 

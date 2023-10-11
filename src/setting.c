@@ -15,6 +15,8 @@
 #include <zephyr/sys/reboot.h>
 
 #include "power.h"
+#include "wdt.h"
+#include "acc.h"
 
 #define LOG_LEVEL_SETTING LOG_LEVEL_DBG
 
@@ -76,38 +78,43 @@ static int sleep_counter = 0;
 static int result = 0;
 
 ssize_t write_period(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
-  if (offset + len > sizeof(app_settings.adv_period )) {
+  if (offset + len > sizeof(app_settings.adv_period)) {
     LOG_ERR("Write period ERROR - %d\n", app_settings.adv_period);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  app_settings.adv_period = *(int8_t *)buf;
-  LOG_DBG("Write period OK - %d\n", app_settings.adv_period );
+  if (app_settings.open == true) {
+    if ((*(int8_t *)buf >= ADV_PERIOD_MIN) && (*(int8_t *)buf <= ADV_PERIOD_MAX)) {
+      app_settings.adv_period = *(int8_t *)buf;
+      LOG_DBG("Write period OK - %d\n", app_settings.adv_period);
+    }
+    else {
+      LOG_DBG("Write power error - value out of bonds - %d\n", *(int8_t *)buf);
+    }
+  }
   return len;
 }
 
 ssize_t read_period(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset) {
   LOG_DBG("Read period OK - %d\n", app_settings.adv_period);
   return bt_gatt_attr_read(conn, attr, buf, len, offset, &app_settings.adv_period, sizeof(app_settings.adv_period));
-} 
+}
 
 ssize_t write_power(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
-  int8_t temp;
+  //  int8_t temp;
   if (offset + len > sizeof(app_settings.power)) {
     LOG_ERR("Write period ERROR - %d\n", app_settings.adv_period);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  temp = *(int8_t *)buf;
-  if ((temp >= app_settings.power_min) && (temp <= app_settings.power_max)) {
-    if (app_settings.open == true ) {
-      app_settings.power = temp;
+  if (app_settings.open == true) {
+    if ((*(int8_t *)buf >= app_settings.power_min) && (*(int8_t *)buf <= app_settings.power_max)) {
+      app_settings.power = *(int8_t *)buf;
       set_power_tx(app_settings.power);
-      LOG_DBG("Write power OK - value %d\n", temp);
-    }    
+      LOG_DBG("Write power OK - value %d\n", *(int8_t *)buf);
+    }
+    else {
+      LOG_DBG("Write power error - value out of bonds %d\n", *(int8_t *)buf);
+    }
   }
-  else {
-    LOG_DBG("Write power error - value out of bonds %d\n", temp );
-  }
-  LOG_DBG("Write power OK - %d\n", app_settings.power);
   return len;
 }
 
@@ -120,15 +127,23 @@ ssize_t write_hit_threshold( struct bt_conn *conn, const struct bt_gatt_attr *at
   if (offset + len > sizeof(app_settings.hit_threshold)) {
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  app_settings.hit_threshold = *(int *)buf;
-  LOG_DBG("Write hit_threshold - %d\n", app_settings.hit_threshold);
+  if (app_settings.open == true) {
+    if ((*(int8_t *)buf >= app_settings.hit_threshold_min) && (*(int8_t *)buf <= app_settings.hit_threshold_max)) {
+      app_settings.hit_threshold = *(int *)buf;
+      LOG_DBG("Write hit_threshold - %d\n", app_settings.hit_threshold);
+    }
+    else {
+      LOG_DBG("Write hit_threshold error - value out of bonds %d\n", *(int8_t *)buf);      
+    }
+  }
   return len;
 }
 
 ssize_t read_hit_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset ) {
-  const int *value = attr->user_data;
-  LOG_DBG("Read hit_threshold OK - %d\n", *value);
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
+//  const int *value = attr->user_data;
+  LOG_DBG("Read hit_threshold OK - %d\n", app_settings.fall_threshold);
+//  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, &app_settings.fall_threshold, sizeof(app_settings.fall_threshold));  
 }
 
 ssize_t write_fall_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags ) {
@@ -136,15 +151,23 @@ ssize_t write_fall_threshold( struct bt_conn *conn, const struct bt_gatt_attr *a
     LOG_ERR("Write fall_threshold ERROR - %d\n", app_settings.fall_threshold);
     return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
   }
-  app_settings.fall_threshold = *(int *)buf;
-  LOG_DBG("Write fall_threshold OK - %d\n", app_settings.fall_threshold);
+  if (app_settings.open == true) {
+    if ((*(int8_t *)buf >= app_settings.fall_threshold_min) && (*(int8_t *)buf <= app_settings.fall_threshold_max)) {
+      app_settings.fall_threshold = *(int *)buf;
+      
+      LOG_DBG("Write fall_threshold OK - %d\n", app_settings.fall_threshold);
+    }
+    else {
+      LOG_DBG("Write fall_threshold error - value out of bonds %d\n", *(int8_t *)buf);
+    }
+  }
   return len;
 }
 
 ssize_t read_fall_threshold( struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset ) {
-  const int *value = attr->user_data;
-  LOG_DBG("Read fall_threshold OK - %d\n", *value);
-  return bt_gatt_attr_read(conn, attr, buf, len, offset, value, sizeof(*value));
+//  const int *value = attr->user_data;
+  LOG_DBG("Read fall_threshold OK - %d\n", app_settings.fall_threshold);
+  return bt_gatt_attr_read(conn, attr, buf, len, offset, app_settings.fall_threshold, sizeof(app_settings.fall_threshold));
 }
 
 ssize_t write_pass(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
@@ -205,10 +228,10 @@ static struct bt_gatt_attr app_settings_attrs[] = {
   BT_GATT_CHARACTERISTIC(&app_settings_fall_threshold_uuid.uuid, BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
                          BT_GATT_PERM_READ | BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
                          read_fall_threshold, write_fall_threshold, &app_settings.fall_threshold),
-  BT_GATT_CHARACTERISTIC(&app_settings_pass_uuid.uuid, BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+  BT_GATT_CHARACTERISTIC(&app_settings_pass_uuid.uuid, /*BT_GATT_CHRC_READ | */BT_GATT_CHRC_WRITE,
                          /* BT_GATT_PERM_READ |*/ BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
                          read_pass, write_pass, &app_settings.hit_threshold),
-  BT_GATT_CHARACTERISTIC(&app_settings_cmd_uuid.uuid, BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+  BT_GATT_CHARACTERISTIC(&app_settings_cmd_uuid.uuid, /*BT_GATT_CHRC_READ | */BT_GATT_CHRC_WRITE,
                          /* BT_GATT_PERM_READ |*/ BT_GATT_PERM_WRITE | BT_GATT_PERM_PREPARE_WRITE,
                          read_cmd, write_cmd, &app_settings.fall_threshold),  
 };
@@ -286,7 +309,8 @@ int run_device(void) {
     if (sleep_counter < 60) {
       LOG_DBG("Sleep counter - %d\n", sleep_counter);
     }
-  k_sleep(K_SECONDS(1));
+    k_sleep(K_SECONDS(1));
+    reset_wdt();
   }
 
   if (0 != (err = bt_gatt_service_unregister(&app_settings_svc))) {

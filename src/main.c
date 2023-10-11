@@ -7,6 +7,7 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/bluetooth/hci.h>
 
 #include <zephyr/pm/pm.h>
@@ -74,8 +75,8 @@ LOG_MODULE_REGISTER( main, LOG_LEVEL_MAIN );
 #define RTT_CTRL_TEXT_CYAN            "[2;36m"
 #define RTT_CTRL_TEXT_WHITE           "[2;37m"
 
-#define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
-#define ACC_FREEFALL_THRESHOLD            7   //ff_thrs_7           // Порог события free-fall ( 0 - 7 )
+//#define ACC_FREFALL_DURATION              2                   // Длительность события free-fall ( 0 - 63 )
+//#define ACC_FREEFALL_THRESHOLD            7   //ff_thrs_7           // Порог события free-fall ( 0 - 7 )
 #define MAX_SHOCK_TIME                    255                 // Максимальное время удержания события удара ( сек )
 #define MAX_FALL_TIME                     255                 // Максимальное время удержания события падения ( сек )
 
@@ -108,21 +109,22 @@ typedef struct {
 } app_var_s;
 
 app_settings_s app_settings = {
+  .adv_period_min = ADV_PERIOD_MIN,
+  .adv_period_max = ADV_PERIOD_MAX,
   .adv_period = DEFAULT_ADV_PERIOD_S,
-  .power_min = 0,
+  .power_min = txp4p,
   .power_max = txp40m,
-  .power = 2,
-  .hit_threshold = 0,
-  .fall_threshold = 0,
+  .power = txp0,
+  .hit_threshold = ACC_SHOCK_THRESHOLD,
+  .fall_threshold = ACC_FREEFALL_THRESHOLD,
   .pass = APP_PASSWORD,
   .open = false,
+  .acc_status = false,
 };
 
 app_var_s app_vars = { 0 };
 
 label_mode_e label_mode = lmInit;
-
-//uint32_t key_times[20];
 
 adv_data_s adv_data = { 
   .man_id = DIWO_ID,
@@ -175,6 +177,7 @@ void adv_timer_exp( struct k_timer *timer_id ) {
   uint8_t event = evTimer;
   k_msgq_put( &qevent, &event, K_NO_WAIT );
 }
+ 
 
 void main( void ) {
   int err = 0;
@@ -220,6 +223,7 @@ void main( void ) {
 #if ( __ENABLE_ACC__ == 1 )  
   if (true != init_acc()) {
     SELF_TEST_MESS("ACC", "ERROR");
+    app_settings.acc_status = false;
   }
   else {
     SELF_TEST_MESS("ACC", "OK");
@@ -248,29 +252,37 @@ void main( void ) {
   }
 #else
   SELF_TEST_MESS( "NFC", "DISABLE" );
-#endif 
+#endif
+
+#if (__ENABLE_WDT__ == 1)
+  if (true != init_wdt(10000)) {
+    SELF_TEST_MESS("WDT", "ERROR");
+  }
+  SELF_TEST_MESS("WDT", "OK");
+#else
+  SELF_TEST_MESS("WDT", "DISABLE");
+#endif
   
   SELF_TEST_MESS( "APP START", "OK" );
 
 #if (__ENABLE_BLE__ == 1)
   print_device_info();
 #endif
-
+  
 #if (__ENABLE_DEEP_SLEEP__ != 0)  
   uint32_t reas = get_reset_reason();
   if( reas & NRF_POWER_RESETREAS_OFF_MASK) {
-//    volatile static int counter = 0;
     LOG_DBG("System resume\n");
     while (1) {
       uint8_t event = 0;
       if (0 == k_msgq_get(&qevent, &event, K_SECONDS(2))) {
-        if( event == evButton ) {
+        if (event == evButton) {
           if (1 == get_button_level()) {
             int event_time = sys_clock_tick_get_32();
             int dtime = event_time - time;
             time = event_time;
             LOG_DBG("Key delay - %d\n", dtime);
-            if((dtime < KEY_EVENT_MIN) || (dtime > KEY_EVENT_MAX)) {
+            if ((dtime < KEY_EVENT_MIN) || (dtime > KEY_EVENT_MAX)) {
               LOG_DBG("Key delay too short\n");
               goto_deep_sleep();
             }
@@ -278,7 +290,7 @@ void main( void ) {
               LOG_DBG("Key pass enter\n");
 #if (__ENABLE_LED__ == 1)
               led_blinck(300);
-#endif              
+#endif
               break;
             }
           }
@@ -287,9 +299,17 @@ void main( void ) {
       else {
         LOG_DBG("Key delay too long\n");
         goto_deep_sleep();
-      }
+        }
     }
   }
+  else if (reas & NRF_POWER_RESETREAS_DOG_MASK) {
+    LOG_DBG("Reset watchdog source\n");
+  }
+#if (__ENABLE_NFC__ == 1)  
+  else if (reas & NRF_POWER_RESETREAS_NFC_MASK) {
+    LOG_DBG("Resume by NFC\n");
+  }
+#endif
   else {
     if (IS_ENABLED(CONFIG_APP_RETENTION)) {
       LOG_ERR("CONFIG_APP_RETENTION\n");
@@ -300,15 +320,6 @@ void main( void ) {
   
   k_timer_init(&adv_timer, adv_timer_exp, NULL);
   k_timer_start( &adv_timer, K_SECONDS( app_settings.adv_period ), K_SECONDS( app_settings.adv_period ) );
-
-#if (__ENABLE_WDT__ == 1)
-  if (true != init_wdt(10000)) {
-    SELF_TEST_MESS("WDT", "ERROR");
-  }
-  SELF_TEST_MESS("WDT", "OK");
-#else
-  SELF_TEST_MESS("WDT", "DISABLE");
-#endif
 
   k_work_init_delayable(&key_on_timer, key_on_timer_fn);
   label_mode = lmBeacon;
@@ -324,10 +335,10 @@ void main( void ) {
           err = bt_le_adv_stop();
 
           if (err) {
-            LOG_ERR( "Advertising stop FAULT(err %d)\n", err );
+            LOG_ADV_DBG( "Advertising stop FAULT(err %d)\n", err );
           } 
           else {
-            LOG_DBG( "Advertising stop OK\n" );
+            LOG_ADV_DBG( "Advertising stop OK\n" );
           }       
 #endif
           
@@ -346,7 +357,9 @@ void main( void ) {
             batt_counter = BATT_READ_DELAY;
           }
 #if ( __ENABLE_ACC__ == 1 )
-          read_adv_acc_data(&adv_data);
+          if (app_settings.acc_status == true) {
+            read_adv_acc_data(&adv_data);
+          }
 #else
           adv_data.x = adv_data.y = adv_data.z = 0;
 #endif
@@ -370,38 +383,40 @@ void main( void ) {
           adv_data.counter++;
 #if (__ENABLE_BLE__ != 0)
           if (0 != (err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY_1, ad, ARRAY_SIZE(ad), NULL, 0))) {
-            LOG_ERR("Advertising start FAULT(err %d)\n", err);
+            LOG_ADV_DBG("Advertising start FAULT(err %d)\n", err);
           }
           else {
-            LOG_DBG("Advertising start OK\n");
+            LOG_ADV_DBG("Advertising start OK\n");
           }
 
-          LOG_DBG( "\rSend advertisment.\r" );
-          LOG_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
-          LOG_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
-          LOG_DBG( "fall - %d\r", adv_data.fall );
-          LOG_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );
+          LOG_ADV_DBG( "\rSend advertisment.\r" );
+          LOG_ADV_DBG( "x - %02d  y - %02d  z - %02d\r", adv_data.x, adv_data.y, adv_data.z );
+          LOG_ADV_DBG( "shock - %d value - %d\r", adv_data.shock, adv_data.shock_value );
+          LOG_ADV_DBG( "fall - %d\r", adv_data.fall );
+          LOG_ADV_DBG( "temp - %d  batt - %d\rpacket counter - %d\r", adv_data.temp, adv_data.bat, adv_data.counter );
 #endif          
           break;          
         }
-        case evIrqHi : {
-// Обработчик события по превышению
-/* shock_value (uint8) - величина удара, вычисленная по формуле (x * x + y * y + z * z) / (255 * 3), 
+        case evIrqHi: {
+          // Обработчик события по превышению
+          /* shock_value (uint8) - величина удара, вычисленная по формуле (x * x + y * y + z * z) / (255 * 3), 
  * вычисляется при срабатывании прерывания. При  ненулевом значении таймера shock (предыдущий удар был менее 255 секунд назад) 
  * shock_value = max( (x * x + y * y + z * z) / (255 * 3), previous_shock_value)). 
  * При обнулении таймера shock значение shock_value также обнуляется.        
 */
- 
-#define SHOCK_MUL                     8
-          
+
+#define SHOCK_MUL 8
+
           app_vars.last_shock = 1;
           int temp[3] = {0};
           int result = 0;
           int8_t val8 = 0;
-        
-          struct sensor_value val[3] = { 0 };
-#if ( __ENABLE_ACC__ == 1 )          
-          read_sensor_value(val);
+
+          struct sensor_value val[3] = {0};
+#if (__ENABLE_ACC__ == 1)
+          if (app_settings.acc_status == true) {
+            read_sensor_value(val);
+          }
 #endif
           temp[0] = sensor_value_to_double( &val[0] ) * SHOCK_MUL;
           temp[0] *= temp[0];
@@ -468,44 +483,6 @@ void main( void ) {
                     k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));                    
                   }
                 }
-//                if ((dtime < KEY_EVENT_MIN) || (dtime > KEY_EVENT_MAX)) {
-//                  LOG_DBG("Key delay too short\n");
-//                  goto_deep_sleep();
-//                }
-//                if (key_counter++ >= 3) {
-//                  LOG_DBG("Key pass enter\n");
-//                #if (__ENABLE_LED__ == 1)
-//                  led_blinck(300);
-//                #endif
-//                  break;
-//                }
-//
-//                
-//                
-//                LOG_DBG("Key press - %d\r", counter++);
-//                k_timer_stop(&adv_timer );
-//                err = bt_le_adv_stop();
-//                if (0 <= (result = run_device())) {
-//                  if (result & scmPeriodSet) {
-//                    LOG_DBG("ADV period change - %d\r", app_settings.adv_period );
-//                  }
-//                  if (result & scmPowerSet) {
-//                    set_power_tx(app_settings.power);
-//                    LOG_DBG("ADV power change - %d\r", app_settings.adv_period);
-//                  }
-//                  if (result & scmHitThreshold) {
-//#if (__ENABLE_ACC__ != 0)
-//                    acc_set_shock_limit(app_settings.hit_threshold);
-//#endif
-//                  }
-//                  if (result & scmFallThreshold) {
-//#if (__ENABLE_ACC__ != 0)
-//                    acc_set_freefall_limit(app_settings.fall_threshold);
-//#endif                    
-//                  }
-//                }
-//                app_settings.open = false;
-//                k_timer_start(&adv_timer, K_SECONDS(app_settings.adv_period), K_SECONDS(app_settings.adv_period));
               }
               else {
                 LOG_DBG("Key release - %d\r", counter++);
@@ -582,8 +559,10 @@ int goto_deep_sleep(void) {
   nrf_gpio_cfg_input(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_PULLUP);
   nrf_gpio_cfg_sense_set(NRF_DT_GPIOS_TO_PSEL(DT_ALIAS(sw0), gpios), NRF_GPIO_PIN_SENSE_LOW);
 
-  LOG_INF("System off\n");
-  k_sleep(K_MSEC(1000));
+  LOG_DBG("System off\n");
+  while (log_data_pending()) {
+    k_sleep(K_MSEC(100));
+  }
   pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
   pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
   k_sleep(K_MSEC(1));

@@ -4,6 +4,8 @@
 
 #include <stdbool.h>
 
+#include "power.h"
+
 #define __DEBUG__ 1
 #define __ENABLE_SELF_TEST_MESS__ 1
 
@@ -79,11 +81,11 @@
 #endif
 
 #ifndef POWER_MIN
-#define POWER_MIN             -40
+#define POWER_MIN             txp4p
 #endif
 
 #ifndef POWER_MAX
-#define POWER_MAX             4
+#define POWER_MAX             txp40m
 #endif
 
 #ifndef HIT_THRESHOLD_MIN

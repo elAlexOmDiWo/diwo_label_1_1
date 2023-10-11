@@ -5,3 +5,5 @@ build
 
 /j-flash/*.jflash
 html
+/doxygen/Doxyfile
+/lis2dw12.zip
